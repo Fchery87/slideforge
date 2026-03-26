@@ -1,0 +1,14 @@
+{
+  "name": "slideforge-render-worker",
+  "private": true,
+  "scripts": {
+    "start": "bun run index.ts"
+  },
+  "dependencies": {
+    "remotion": "^4.0.440",
+    "@remotion/cli": "^4.0.440",
+    "@remotion/bundler": "^4.0.440",
+    "@remotion/renderer": "^4.0.440",
+    "@aws-sdk/client-s3": "^3.1017.0"
+  }
+}
