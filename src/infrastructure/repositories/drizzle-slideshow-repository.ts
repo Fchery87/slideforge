@@ -24,6 +24,7 @@ function toSlideshow(row: typeof slideshows.$inferSelect, slideRows: (typeof sli
       order: s.order,
       durationFrames: s.durationFrames,
       backgroundColor: s.backgroundColor,
+      effects: s.effects as Slide["effects"],
       canvasObjects: s.canvasObjects.map((o) => ({
         id: o.id,
         slideId: o.slideId,
@@ -152,8 +153,56 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
       order: slide.order,
       durationFrames: slide.durationFrames,
       backgroundColor: slide.backgroundColor,
+      effects: slide.effects,
     });
     return { ...slide, canvasObjects: [] };
+  }
+
+  async updateSlide(slideId: string, data: Partial<Pick<Slide, "durationFrames" | "backgroundColor" | "effects">>): Promise<Slide> {
+    await db.update(slides).set({
+      ...(data.durationFrames !== undefined && { durationFrames: data.durationFrames }),
+      ...(data.backgroundColor !== undefined && { backgroundColor: data.backgroundColor }),
+      ...(data.effects !== undefined && { effects: data.effects }),
+      updatedAt: new Date(),
+    }).where(eq(slides.id, slideId));
+
+    // Fetch and return updated slide
+    const slide = await db.query.slides.findFirst({
+      where: eq(slides.id, slideId),
+      with: {
+        canvasObjects: {
+          orderBy: asc(canvasObjects.zIndex),
+        },
+      },
+    });
+
+    if (!slide) throw new Error("Slide not found");
+
+    return {
+      id: slide.id,
+      slideshowId: slide.slideshowId,
+      order: slide.order,
+      durationFrames: slide.durationFrames,
+      backgroundColor: slide.backgroundColor,
+      effects: slide.effects as Slide["effects"],
+      canvasObjects: slide.canvasObjects.map((o) => ({
+        id: o.id,
+        slideId: o.slideId,
+        type: o.type,
+        x: o.x,
+        y: o.y,
+        width: o.width,
+        height: o.height,
+        rotation: o.rotation,
+        opacity: o.opacity,
+        zIndex: o.zIndex,
+        properties: o.properties as CanvasObject["properties"],
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt,
+      })),
+      createdAt: slide.createdAt,
+      updatedAt: slide.updatedAt,
+    };
   }
 
   async removeSlide(slideId: string): Promise<void> {

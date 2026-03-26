@@ -3,6 +3,8 @@ import type { Slide } from "@/domain/slideshow/entities/slide";
 import type { CanvasObject, ShapeProperties } from "@/domain/slideshow/entities/canvas-object";
 import { ImageSequence } from "./image-sequence";
 import { TextSequence } from "./text-sequence";
+import { KenBurnsContainer, FilterContainer, OverlayContainer, ParallaxContainer } from "../effects";
+import { createDefaultSlideEffects } from "@/domain/slideshow/value-objects/slide-effects";
 
 type SlideSequenceProps = {
   slide: Slide;
@@ -87,7 +89,11 @@ export function SlideSequence({ slide }: SlideSequenceProps) {
     (a, b) => a.zIndex - b.zIndex
   );
 
-  return (
+  // Get effects with defaults
+  const defaultEffects = createDefaultSlideEffects();
+  const effects = slide.effects || defaultEffects;
+
+  const slideContent = (
     <AbsoluteFill
       style={{
         backgroundColor: slide.backgroundColor ?? "#000000",
@@ -95,5 +101,18 @@ export function SlideSequence({ slide }: SlideSequenceProps) {
     >
       {sortedObjects.map(renderCanvasObject)}
     </AbsoluteFill>
+  );
+
+  // Wrap with effect containers (order matters - from inner to outer)
+  return (
+    <ParallaxContainer effect={effects.parallax ?? defaultEffects.parallax!}>
+      <OverlayContainer overlay={effects.overlay ?? defaultEffects.overlay!}>
+        <FilterContainer filter={effects.filter ?? defaultEffects.filter!}>
+          <KenBurnsContainer effect={effects.kenBurns ?? defaultEffects.kenBurns!}>
+            {slideContent}
+          </KenBurnsContainer>
+        </FilterContainer>
+      </OverlayContainer>
+    </ParallaxContainer>
   );
 }

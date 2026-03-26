@@ -12,6 +12,7 @@ export interface ISlideshowRepository {
   delete(id: string): Promise<void>;
 
   addSlide(slide: Omit<Slide, "canvasObjects">): Promise<Slide>;
+  updateSlide(slideId: string, data: Partial<Pick<Slide, "durationFrames" | "backgroundColor" | "effects">>): Promise<Slide>;
   removeSlide(slideId: string): Promise<void>;
   reorderSlides(slideshowId: string, slideIds: string[]): Promise<void>;
 
