@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useRef, useEffect } from "react";
-import { ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut, Music } from "lucide-react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { getTotalDurationFrames } from "@/domain/slideshow/entities/slideshow";
 import { Button } from "@/components/ui/button";
 import { TimelineTrack } from "./timeline-track";
+import { AudioTrackLane } from "./audio-track-lane";
 import { Playhead } from "./playhead";
 
 const MIN_ZOOM = 0.5;
@@ -118,7 +119,13 @@ export function TimelineContainer() {
           className="relative h-full"
           style={{ width: Math.max(trackWidth + 20, 200) }}
         >
-          <div className="absolute inset-y-0 left-0 flex items-center px-2">
+          {/* Slide track label */}
+          <div className="absolute left-0 top-0 flex h-5 items-center px-2">
+            <span className="text-[9px] font-medium text-slate-500">Slides</span>
+          </div>
+          
+          {/* Slide track */}
+          <div className="absolute inset-y-0 left-0 flex items-center px-2" style={{ top: "20px" }}>
             <TimelineTrack
               slides={slideshow.slides}
               transitions={slideshow.transitions}
@@ -127,6 +134,21 @@ export function TimelineContainer() {
               onSelectSlide={handleSelectSlide}
             />
           </div>
+
+          {/* Audio track label (if audio tracks exist) */}
+          {slideshow.audioTracks.length > 0 && (
+            <div className="absolute left-0 flex items-center gap-1 px-2" style={{ top: "32px" }}>
+              <Music className="h-2.5 w-2.5 text-violet-400" />
+              <span className="text-[9px] font-medium text-slate-500">Audio</span>
+            </div>
+          )}
+
+          {/* Audio track lane */}
+          <AudioTrackLane
+            audioTracks={slideshow.audioTracks}
+            pixelsPerFrame={pixelsPerFrame}
+            totalFrames={totalFrames}
+          />
 
           <Playhead pixelsPerFrame={pixelsPerFrame} />
         </div>
