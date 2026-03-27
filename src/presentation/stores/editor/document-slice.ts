@@ -388,4 +388,71 @@ export const createDocumentSlice: StateCreator<
       };
     });
   },
+
+  // Bulk operations
+  bulkSetDuration: (slideIds, durationFrames) => {
+    get().pushToHistory();
+    set((state) => {
+      if (!state.slideshow) return state;
+      const slides = state.slideshow.slides.map((s) =>
+        slideIds.includes(s.id) ? { ...s, durationFrames, updatedAt: new Date() } : s
+      );
+      return { slideshow: { ...state.slideshow, slides }, isDirty: true };
+    });
+  },
+
+  bulkApplyEffect: (slideIds, effects) => {
+    get().pushToHistory();
+    set((state) => {
+      if (!state.slideshow) return state;
+      const slides = state.slideshow.slides.map((s) =>
+        slideIds.includes(s.id)
+          ? { ...s, effects: { ...s.effects, ...effects }, updatedAt: new Date() }
+          : s
+      );
+      return { slideshow: { ...state.slideshow, slides }, isDirty: true };
+    });
+  },
+
+  bulkDeleteSlides: (slideIds) => {
+    get().pushToHistory();
+    set((state) => {
+      if (!state.slideshow) return state;
+      const slides = state.slideshow.slides.filter((s) => !slideIds.includes(s.id));
+      const transitions = state.slideshow.transitions.filter(
+        (t) => !slideIds.includes(t.fromSlideId) && !slideIds.includes(t.toSlideId)
+      );
+      const reindexed = slides.map((s, i) => ({ ...s, order: i }));
+      return {
+        slideshow: { ...state.slideshow, slides: reindexed, transitions },
+        currentSlideIndex: Math.min(state.currentSlideIndex, reindexed.length - 1),
+        selectedSlideIds: [],
+        isDirty: true,
+      };
+    });
+  },
+
+  bulkDuplicateSlides: (slideIds) => {
+    get().pushToHistory();
+    set((state) => {
+      if (!state.slideshow) return state;
+      const slidesToDuplicate = state.slideshow.slides.filter((s) => slideIds.includes(s.id));
+      const duplicatedSlides = slidesToDuplicate.map((slide) => ({
+        ...slide,
+        id: crypto.randomUUID(),
+        canvasObjects: slide.canvasObjects.map((obj) => ({
+          ...obj,
+          id: crypto.randomUUID(),
+        })),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+      const allSlides = [...state.slideshow.slides, ...duplicatedSlides];
+      const reindexed = allSlides.map((s, i) => ({ ...s, order: i }));
+      return {
+        slideshow: { ...state.slideshow, slides: reindexed },
+        isDirty: true,
+      };
+    });
+  },
 });
