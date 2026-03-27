@@ -1,0 +1,1 @@
+ALTER TABLE "templates" ADD COLUMN "occasion_type" text;

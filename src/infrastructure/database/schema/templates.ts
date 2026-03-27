@@ -9,6 +9,7 @@ export const templates = pgTable("templates", {
   name: text("name").notNull(),
   description: text("description"),
   category: templateCategoryEnum("category").notNull(),
+  occasionType: text("occasion_type"),  // matches slideshow occasion_type enum values
   thumbnailUrl: text("thumbnail_url"),
   slideshowData: jsonb("slideshow_data").notNull(),
   isPublished: boolean("is_published").notNull().default(false),
