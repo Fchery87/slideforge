@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Film, Pencil, Copy, Trash2, MoreHorizontal } from "lucide-react";
+import { Film, Pencil, Copy, Trash2, MoreHorizontal, Monitor, Smartphone, Square, Maximize } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Slideshow } from "@/domain/slideshow/entities/slideshow";
+import type { Slideshow, AspectRatio } from "@/domain/slideshow/entities/slideshow";
+
+const OCCASION_LABELS: Record<string, string> = {
+  birthday: "Birthday",
+  wedding: "Wedding",
+  anniversary: "Anniversary",
+  memorial: "Memorial",
+  graduation: "Graduation",
+  baby_shower: "Baby Shower",
+  family_recap: "Family Recap",
+  holiday: "Holiday",
+  presentation: "Presentation",
+  custom: "Custom",
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  draft: "bg-slate-500/30 text-slate-300",
+  exporting: "bg-amber-500/30 text-amber-300",
+  completed: "bg-emerald-500/30 text-emerald-300",
+  failed: "bg-red-500/30 text-red-300",
+};
+
+const ASPECT_RATIO_ICONS: Record<AspectRatio, React.ComponentType<{ className?: string }>> = {
+  "16:9": Monitor,
+  "9:16": Smartphone,
+  "4:3": Square,
+  "1:1": Maximize,
+};
 
 interface SlideshowCardProps {
   slideshow: Slideshow;
@@ -54,15 +81,41 @@ export function SlideshowCard({
                 {slideshow.title}
               </h3>
             </Link>
-            <div className="mt-1.5 flex items-center gap-2">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <Badge variant="secondary" className="text-[10px]">
                 {slideshow.slides.length} slide{slideshow.slides.length !== 1 ? "s" : ""}
               </Badge>
+              
+              {/* Occasion type badge */}
+              {slideshow.occasionType && slideshow.occasionType !== "custom" && (
+                <Badge variant="outline" className="border-white/[0.08] text-[10px] text-slate-400">
+                  {OCCASION_LABELS[slideshow.occasionType]}
+                </Badge>
+              )}
+              
+              {/* Status badge */}
+              {slideshow.status && (
+                <Badge className={`text-[10px] ${STATUS_STYLES[slideshow.status]}`}>
+                  {slideshow.status.charAt(0).toUpperCase() + slideshow.status.slice(1)}
+                </Badge>
+              )}
+              
               <span className="text-[11px] text-slate-500">
                 {formatDistanceToNow(updatedAt, { addSuffix: true })}
               </span>
             </div>
           </div>
+          
+          {/* Aspect ratio icon */}
+          {slideshow.aspectRatio && (
+            <div className="flex shrink-0 items-center gap-1 rounded bg-white/[0.03] px-1.5 py-0.5" title={slideshow.aspectRatio}>
+              {(() => {
+                const Icon = ASPECT_RATIO_ICONS[slideshow.aspectRatio] ?? Monitor;
+                return <Icon className="h-3 w-3 text-slate-500" />;
+              })()}
+              <span className="text-[9px] text-slate-500">{slideshow.aspectRatio}</span>
+            </div>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
