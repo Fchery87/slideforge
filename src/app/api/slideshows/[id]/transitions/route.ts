@@ -16,6 +16,19 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   if (existing.userId !== session!.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await request.json();
+  
+  // Validate that both slides exist
+  const fromSlide = existing.slides.find(s => s.id === body.fromSlideId);
+  const toSlide = existing.slides.find(s => s.id === body.toSlideId);
+  
+  if (!fromSlide) {
+    return NextResponse.json({ error: "From slide not found" }, { status: 400 });
+  }
+  
+  if (!toSlide) {
+    return NextResponse.json({ error: "To slide not found" }, { status: 400 });
+  }
+
   const transition: Transition = {
     id: body.id ?? nanoid(),
     slideshowId: id,
