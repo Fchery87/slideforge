@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { SlideThumbnail } from "./slide-thumbnail";
 import { Button } from "@/components/ui/button";
-import { Plus, Copy, Trash2, Layers, Clock, Sparkles, ListChecks } from "lucide-react";
+import { Plus, Copy, Trash2, Layers, Clock, Sparkles, ListChecks, Play, Flag, X } from "lucide-react";
 import { nanoid } from "nanoid";
 import type { Slide } from "@/domain/slideshow/entities/slide";
 import { migrateLegacyBackgroundColor } from "@/domain/slideshow/value-objects/slide-background";
+import { INTRO_OUTRO_TEMPLATES, type IntroOutroTemplate } from "./intro-outro-templates";
 
 export function SlideStrip() {
   const {
@@ -31,6 +32,8 @@ export function SlideStrip() {
 
   const dragIndexRef = useRef<number | null>(null);
   const lastClickedIndexRef = useRef<number | null>(null);
+  const [showIntroPicker, setShowIntroPicker] = useState(false);
+  const [showOutroPicker, setShowOutroPicker] = useState(false);
 
   const handleAddSlide = useCallback(() => {
     if (!slideshow) return;
@@ -119,6 +122,56 @@ export function SlideStrip() {
     }
   }, [selectedSlideIds, bulkSetDuration]);
 
+  const handleAddTemplate = useCallback((template: IntroOutroTemplate, position: "start" | "end") => {
+    if (!slideshow) return;
+    
+    const objects = template.objects.map((obj) => ({
+      id: nanoid(),
+      slideId: "", // Will be set when slide is created
+      type: "text" as const,
+      x: obj.x,
+      y: obj.y,
+      width: 420,
+      height: 80,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 1,
+      properties: {
+        content: obj.text,
+        fontFamily: "Plus Jakarta Sans",
+        fontSize: obj.preset === "heading" ? 64 : obj.preset === "subheading" ? 36 : obj.preset === "closing" ? 28 : 24,
+        fontColor: "#F8FAFC",
+        fontWeight: obj.preset === "heading" || obj.preset === "closing" ? "bold" as const : "normal" as const,
+        textAlign: "center" as const,
+      },
+      sourceAssetId: null,
+      animation: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    const newSlide: Slide = {
+      id: nanoid(),
+      slideshowId: slideshow.id,
+      order: position === "start" ? 0 : slideshow.slides.length,
+      durationFrames: slideshow.fps * 5,
+      background: { kind: "solid" as const, color: template.background.color },
+      canvasObjects: objects.map((obj) => ({ ...obj, slideId: nanoid() })),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    addSlide(newSlide);
+    setShowIntroPicker(false);
+    setShowOutroPicker(false);
+    
+    if (position === "start") {
+      setCurrentSlideIndex(0);
+    } else {
+      setCurrentSlideIndex(slideshow.slides.length);
+    }
+  }, [slideshow, addSlide, setCurrentSlideIndex]);
+
   if (!slideshow) return null;
 
   const hasMultiSelect = selectedSlideIds.length > 1;
@@ -182,8 +235,70 @@ export function SlideStrip() {
         </div>
       )}
 
+      {/* Intro picker popover */}
+      {showIntroPicker && (
+        <div className="absolute bottom-full left-4 z-20 mb-2 w-64 rounded-xl border border-white/[0.08] bg-slate-900 p-3 shadow-xl">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-300">Add Intro Slide</span>
+            <Button variant="ghost" size="icon-xs" onClick={() => setShowIntroPicker(false)}>
+              <X className="h-3 w-3 text-slate-400" />
+            </Button>
+          </div>
+          <div className="space-y-1.5">
+            {INTRO_OUTRO_TEMPLATES.filter(t => t.category === "intro").map((template) => (
+              <button
+                key={template.id}
+                onClick={() => handleAddTemplate(template, "start")}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-slate-300 hover:bg-white/[0.04]"
+              >
+                <Play className="h-3.5 w-3.5 text-emerald-400" />
+                {template.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Outro picker popover */}
+      {showOutroPicker && (
+        <div className="absolute bottom-full right-4 z-20 mb-2 w-64 rounded-xl border border-white/[0.08] bg-slate-900 p-3 shadow-xl">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-300">Add Outro Slide</span>
+            <Button variant="ghost" size="icon-xs" onClick={() => setShowOutroPicker(false)}>
+              <X className="h-3 w-3 text-slate-400" />
+            </Button>
+          </div>
+          <div className="space-y-1.5">
+            {INTRO_OUTRO_TEMPLATES.filter(t => t.category === "outro").map((template) => (
+              <button
+                key={template.id}
+                onClick={() => handleAddTemplate(template, "end")}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-slate-300 hover:bg-white/[0.04]"
+              >
+                <Flag className="h-3.5 w-3.5 text-rose-400" />
+                {template.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Slide thumbnails */}
-      <div className="flex h-full items-center gap-2 overflow-x-auto px-4 py-2">
+      <div className="relative flex h-full items-center gap-2 overflow-x-auto px-4 py-2">
+        {/* Add Intro button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setShowIntroPicker(!showIntroPicker);
+            setShowOutroPicker(false);
+          }}
+          className="shrink-0 gap-1 text-[10px] text-slate-500 hover:text-slate-300"
+        >
+          <Play className="h-3 w-3 text-emerald-400/70" />
+          Intro
+        </Button>
+
         {slideshow.slides.map((slide, index) => (
           <SlideThumbnail
             key={slide.id}
@@ -197,6 +312,20 @@ export function SlideStrip() {
             onDrop={() => handleDrop(index)}
           />
         ))}
+
+        {/* Add Outro button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setShowOutroPicker(!showOutroPicker);
+            setShowIntroPicker(false);
+          }}
+          className="shrink-0 gap-1 text-[10px] text-slate-500 hover:text-slate-300"
+        >
+          <Flag className="h-3 w-3 text-rose-400/70" />
+          Outro
+        </Button>
 
         <div className="flex gap-2">
           <Button
