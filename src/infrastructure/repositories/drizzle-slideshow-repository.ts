@@ -15,6 +15,10 @@ function toSlideshow(row: typeof slideshows.$inferSelect, slideRows: (typeof sli
     userId: row.userId,
     title: row.title,
     description: row.description,
+    occasionType: row.occasionType,
+    status: row.status,
+    aspectRatio: row.aspectRatio,
+    coverAssetId: row.coverAssetId,
     resolution: row.resolution,
     fps: row.fps,
     backgroundColor: row.backgroundColor,
@@ -41,6 +45,8 @@ function toSlideshow(row: typeof slideshows.$inferSelect, slideRows: (typeof sli
         opacity: o.opacity / 100,
         zIndex: o.zIndex,
         groupId: o.groupId ?? undefined,
+        sourceAssetId: o.sourceAssetId ?? null,
+        animation: o.animation as CanvasObject["animation"],
         properties: o.properties as CanvasObject["properties"],
         createdAt: o.createdAt,
         updatedAt: o.updatedAt,
@@ -65,6 +71,8 @@ function toSlideshow(row: typeof slideshows.$inferSelect, slideRows: (typeof sli
       trackIndex: a.trackIndex,
       startFrame: a.startFrame,
       endFrame: a.endFrame,
+      trimStartFrame: a.trimStartFrame,
+      trimEndFrame: a.trimEndFrame,
       volume: a.volume,
       fadeInFrames: a.fadeInFrames,
       fadeOutFrames: a.fadeOutFrames,
@@ -131,6 +139,10 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
       userId: slideshow.userId,
       title: slideshow.title,
       description: slideshow.description,
+      occasionType: slideshow.occasionType,
+      status: slideshow.status,
+      aspectRatio: slideshow.aspectRatio,
+      coverAssetId: slideshow.coverAssetId,
       resolution: slideshow.resolution,
       fps: slideshow.fps,
       backgroundColor: slideshow.backgroundColor,
@@ -142,10 +154,14 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
     return { ...slideshow, slides: [], transitions: [], audioTracks: [] };
   }
 
-  async update(id: string, data: Partial<Pick<Slideshow, "title" | "description" | "resolution" | "fps" | "backgroundColor" | "theme" | "thumbnailUrl">>): Promise<Slideshow> {
+  async update(id: string, data: Partial<Pick<Slideshow, "title" | "description" | "occasionType" | "status" | "aspectRatio" | "coverAssetId" | "resolution" | "fps" | "backgroundColor" | "theme" | "thumbnailUrl">>): Promise<Slideshow> {
     await db.update(slideshows).set({ ...data, updatedAt: new Date() }).where(eq(slideshows.id, id));
     const result = await this.findById(id);
     return result!;
+  }
+
+  async updateStatus(id: string, status: Slideshow["status"]): Promise<void> {
+    await db.update(slideshows).set({ status, updatedAt: new Date() }).where(eq(slideshows.id, id));
   }
 
   async delete(id: string): Promise<void> {
@@ -209,6 +225,8 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
         opacity: o.opacity / 100,
         zIndex: o.zIndex,
         groupId: o.groupId ?? undefined,
+        sourceAssetId: o.sourceAssetId ?? null,
+        animation: o.animation as CanvasObject["animation"],
         properties: o.properties as CanvasObject["properties"],
         createdAt: o.createdAt,
         updatedAt: o.updatedAt,
@@ -244,6 +262,8 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
           opacity: Math.round(obj.opacity * 100),
           zIndex: obj.zIndex,
           groupId: obj.groupId ?? null,
+          sourceAssetId: obj.sourceAssetId ?? null,
+          animation: obj.animation ?? null,
           properties: obj.properties,
         })
         .onConflictDoUpdate({
@@ -257,6 +277,8 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
             opacity: Math.round(obj.opacity * 100),
             zIndex: obj.zIndex,
             groupId: obj.groupId ?? null,
+            sourceAssetId: obj.sourceAssetId ?? null,
+            animation: obj.animation ?? null,
             properties: obj.properties,
             updatedAt: new Date(),
           },
@@ -299,6 +321,8 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
       trackIndex: track.trackIndex,
       startFrame: track.startFrame,
       endFrame: track.endFrame,
+      trimStartFrame: track.trimStartFrame,
+      trimEndFrame: track.trimEndFrame,
       volume: track.volume,
       fadeInFrames: track.fadeInFrames,
       fadeOutFrames: track.fadeOutFrames,
@@ -312,7 +336,7 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
 
   async updateAudioTrack(
     trackId: string,
-    data: Partial<Pick<AudioTrack, "startFrame" | "endFrame" | "volume" | "fadeInFrames" | "fadeOutFrames">>
+    data: Partial<Pick<AudioTrack, "startFrame" | "endFrame" | "trimStartFrame" | "trimEndFrame" | "volume" | "fadeInFrames" | "fadeOutFrames">>
   ): Promise<AudioTrack> {
     await db
       .update(audioTracks)
@@ -331,6 +355,8 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
       trackIndex: row.trackIndex,
       startFrame: row.startFrame,
       endFrame: row.endFrame,
+      trimStartFrame: row.trimStartFrame,
+      trimEndFrame: row.trimEndFrame,
       volume: row.volume,
       fadeInFrames: row.fadeInFrames,
       fadeOutFrames: row.fadeOutFrames,

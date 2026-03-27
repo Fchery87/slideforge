@@ -29,6 +29,8 @@ export async function POST(request: Request) {
     userId: session!.user.id,
     title: body.title,
     description: body.description,
+    occasionType: body.occasionType,
+    aspectRatio: body.aspectRatio,
     resolution: body.resolution,
     fps: body.fps,
     backgroundColor: body.backgroundColor,

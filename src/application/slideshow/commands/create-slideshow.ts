@@ -1,5 +1,5 @@
 import type { ISlideshowRepository } from "@/domain/slideshow/repositories/slideshow-repository.interface";
-import type { Slideshow } from "@/domain/slideshow/entities/slideshow";
+import type { Slideshow, OccasionType, AspectRatio } from "@/domain/slideshow/entities/slideshow";
 import type { ResolutionKey } from "@/domain/slideshow/value-objects/resolution";
 import { migrateLegacyBackgroundColor } from "@/domain/slideshow/value-objects/slide-background";
 import { nanoid } from "nanoid";
@@ -8,6 +8,8 @@ export interface CreateSlideshowInput {
   userId: string;
   title?: string;
   description?: string;
+  occasionType?: OccasionType;
+  aspectRatio?: AspectRatio;
   resolution?: ResolutionKey;
   fps?: number;
   backgroundColor?: string;
@@ -25,6 +27,10 @@ export class CreateSlideshowCommand {
       userId: input.userId,
       title: input.title ?? "Untitled Slideshow",
       description: input.description ?? null,
+      occasionType: input.occasionType ?? "custom",
+      status: "draft",
+      aspectRatio: input.aspectRatio ?? "16:9",
+      coverAssetId: null,
       resolution: input.resolution ?? "1080p",
       fps: input.fps ?? 30,
       backgroundColor: input.backgroundColor ?? "#000000",

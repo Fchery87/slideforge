@@ -81,6 +81,8 @@ export interface CanvasObject {
   zIndex: number;
   properties: CanvasObjectProperties;
   groupId?: string; // ID of the group this object belongs to, if any
+  sourceAssetId: string | null;
+  animation: AnimationConfig | null;
   createdAt: Date;
   updatedAt: Date;
 }

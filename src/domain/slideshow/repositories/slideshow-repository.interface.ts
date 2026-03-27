@@ -9,8 +9,9 @@ export interface ISlideshowRepository {
   findById(id: string): Promise<Slideshow | null>;
   findByUserId(userId: string, options: { page: number; limit: number }): Promise<{ items: Slideshow[]; total: number }>;
   create(slideshow: Omit<Slideshow, "slides" | "transitions" | "audioTracks">): Promise<Slideshow>;
-  update(id: string, data: Partial<Pick<Slideshow, "title" | "description" | "resolution" | "fps" | "backgroundColor" | "theme" | "thumbnailUrl">>): Promise<Slideshow>;
+  update(id: string, data: Partial<Pick<Slideshow, "title" | "description" | "occasionType" | "status" | "aspectRatio" | "coverAssetId" | "resolution" | "fps" | "backgroundColor" | "theme" | "thumbnailUrl">>): Promise<Slideshow>;
   delete(id: string): Promise<void>;
+  updateStatus(id: string, status: Slideshow["status"]): Promise<void>;
 
   addSlide(slide: Omit<Slide, "canvasObjects">): Promise<Slide>;
   updateSlide(slideId: string, data: Partial<Pick<Slide, "durationFrames" | "background" | "effects" | "notes" | "layoutId">>): Promise<Slide>;
@@ -24,5 +25,5 @@ export interface ISlideshowRepository {
 
   addAudioTrack(track: AudioTrack): Promise<AudioTrack>;
   removeAudioTrack(trackId: string): Promise<void>;
-  updateAudioTrack(trackId: string, data: Partial<Pick<AudioTrack, "startFrame" | "endFrame" | "volume" | "fadeInFrames" | "fadeOutFrames">>): Promise<AudioTrack>;
+  updateAudioTrack(trackId: string, data: Partial<Pick<AudioTrack, "startFrame" | "endFrame" | "trimStartFrame" | "trimEndFrame" | "volume" | "fadeInFrames" | "fadeOutFrames">>): Promise<AudioTrack>;
 }

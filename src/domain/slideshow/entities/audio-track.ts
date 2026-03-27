@@ -5,6 +5,8 @@ export interface AudioTrack {
   trackIndex: number;
   startFrame: number;
   endFrame: number;
+  trimStartFrame: number;
+  trimEndFrame: number | null;
   volume: number;
   fadeInFrames: number;
   fadeOutFrames: number;

@@ -15,6 +15,8 @@ export const canvasObjects = pgTable("canvas_objects", {
   opacity: integer("opacity").notNull().default(100),
   zIndex: integer("z_index").notNull().default(0),
   groupId: text("group_id"),
+  sourceAssetId: text("source_asset_id"),
+  animation: jsonb("animation"),
   properties: jsonb("properties").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

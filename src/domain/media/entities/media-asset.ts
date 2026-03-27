@@ -1,9 +1,12 @@
 import type { MediaType } from "../value-objects/media-type";
 import type { FileDimensions } from "../value-objects/file-dimensions";
 
+export type ProcessingStatus = "pending" | "processing" | "ready" | "failed";
+
 export interface MediaAsset {
   id: string;
   userId: string;
+  slideshowId: string | null;
   type: MediaType;
   fileName: string;
   mimeType: string;
@@ -13,6 +16,7 @@ export interface MediaAsset {
   width: number | null;
   height: number | null;
   durationMs: number | null;
+  processingStatus: ProcessingStatus;
   folderId: string | null;
   createdAt: Date;
 }

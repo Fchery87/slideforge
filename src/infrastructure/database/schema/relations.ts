@@ -23,6 +23,10 @@ export const mediaAssetsRelations = relations(mediaAssets, ({ one, many }) => ({
     fields: [mediaAssets.folderId],
     references: [mediaFolders.id],
   }),
+  slideshow: one(slideshows, {
+    fields: [mediaAssets.slideshowId],
+    references: [slideshows.id],
+  }),
   audioTracks: many(audioTracks),
 }));
 
@@ -39,10 +43,15 @@ export const slideshowsRelations = relations(slideshows, ({ one, many }) => ({
     fields: [slideshows.userId],
     references: [userProfiles.id],
   }),
+  coverAsset: one(mediaAssets, {
+    fields: [slideshows.coverAssetId],
+    references: [mediaAssets.id],
+  }),
   slides: many(slides),
   transitions: many(transitions),
   audioTracks: many(audioTracks),
   exportJobs: many(exportJobs),
+  mediaAssets: many(mediaAssets),
 }));
 
 export const slidesRelations = relations(slides, ({ one, many }) => ({

@@ -2,9 +2,14 @@ import { integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const mediaTypeEnum = pgEnum("media_type", ["image", "audio"]);
 
+export const processingStatusEnum = pgEnum("processing_status", [
+  "pending", "processing", "ready", "failed"
+]);
+
 export const mediaAssets = pgTable("media_assets", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
+  slideshowId: text("slideshow_id"),
   type: mediaTypeEnum("type").notNull(),
   fileName: text("file_name").notNull(),
   mimeType: text("mime_type").notNull(),
@@ -14,6 +19,7 @@ export const mediaAssets = pgTable("media_assets", {
   width: integer("width"),
   height: integer("height"),
   durationMs: integer("duration_ms"),
+  processingStatus: processingStatusEnum("processing_status").notNull().default("ready"),
   folderId: text("folder_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -9,7 +9,7 @@ import type { MediaType } from "@/domain/media/value-objects/media-type";
 export class DrizzleMediaRepository implements IMediaAssetRepository {
   async findById(id: string): Promise<MediaAsset | null> {
     const result = await db.select().from(mediaAssets).where(eq(mediaAssets.id, id)).limit(1);
-    return result[0] ?? null;
+    return (result[0] as MediaAsset) ?? null;
   }
 
   async findByUserId(
@@ -40,6 +40,7 @@ export class DrizzleMediaRepository implements IMediaAssetRepository {
     await db.insert(mediaAssets).values({
       id: asset.id,
       userId: asset.userId,
+      slideshowId: asset.slideshowId,
       type: asset.type,
       fileName: asset.fileName,
       mimeType: asset.mimeType,
@@ -49,6 +50,7 @@ export class DrizzleMediaRepository implements IMediaAssetRepository {
       width: asset.width,
       height: asset.height,
       durationMs: asset.durationMs,
+      processingStatus: asset.processingStatus,
       folderId: asset.folderId,
     });
     return asset;
