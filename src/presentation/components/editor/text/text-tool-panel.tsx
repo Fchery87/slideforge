@@ -4,34 +4,73 @@ import { useCallback } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { Button } from "@/components/ui/button";
 import type { CanvasObject } from "@/domain/slideshow/entities/canvas-object";
-import { Type, Heading1, Heading2, Pilcrow } from "lucide-react";
+import { Type, Heading1, Heading2, Pilcrow, MessageSquare, CalendarDays, Heart } from "lucide-react";
 import { nanoid } from "nanoid";
 
 const TEXT_PRESETS = [
   {
     id: "heading",
-    label: "Heading",
+    label: "Title",
     icon: Heading1,
     properties: {
-      content: "Add a headline",
+      content: "Your Title Here",
       fontFamily: "Plus Jakarta Sans",
-      fontSize: 42,
+      fontSize: 64,
       fontColor: "#F8FAFC",
       fontWeight: "bold" as const,
-      textAlign: "left" as const,
+      textAlign: "center" as const,
     },
   },
   {
     id: "subheading",
-    label: "Subheading",
+    label: "Subtitle",
     icon: Heading2,
     properties: {
-      content: "Add supporting context",
+      content: "Add a subtitle",
       fontFamily: "Plus Jakarta Sans",
-      fontSize: 28,
+      fontSize: 36,
+      fontColor: "#CBD5E1",
+      fontWeight: "bold" as const,
+      textAlign: "center" as const,
+    },
+  },
+  {
+    id: "caption",
+    label: "Caption",
+    icon: MessageSquare,
+    properties: {
+      content: "Caption text",
+      fontFamily: "Plus Jakarta Sans",
+      fontSize: 18,
+      fontColor: "#94A3B8",
+      fontWeight: "normal" as const,
+      textAlign: "center" as const,
+    },
+  },
+  {
+    id: "date",
+    label: "Date / Location",
+    icon: CalendarDays,
+    properties: {
+      content: "January 1, 2026",
+      fontFamily: "Plus Jakarta Sans",
+      fontSize: 20,
       fontColor: "#CBD5E1",
       fontWeight: "normal" as const,
-      textAlign: "left" as const,
+      textAlign: "center" as const,
+    },
+  },
+  {
+    id: "closing",
+    label: "Closing Message",
+    icon: Heart,
+    properties: {
+      content: "Thank You",
+      fontFamily: "Plus Jakarta Sans",
+      fontSize: 28,
+      fontColor: "#F8FAFC",
+      fontWeight: "bold" as const,
+      textAlign: "center" as const,
     },
   },
   {
@@ -41,7 +80,7 @@ const TEXT_PRESETS = [
     properties: {
       content: "Add paragraph copy",
       fontFamily: "Plus Jakarta Sans",
-      fontSize: 20,
+      fontSize: 24,
       fontColor: "#E2E8F0",
       fontWeight: "normal" as const,
       textAlign: "left" as const,
@@ -67,6 +106,8 @@ export function TextToolPanel() {
       opacity: 1,
       zIndex: currentSlide.canvasObjects.length + 1,
       properties,
+      sourceAssetId: null,
+      animation: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
