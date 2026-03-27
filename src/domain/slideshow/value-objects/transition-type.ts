@@ -5,6 +5,9 @@ export const TransitionTypes = {
   ZOOM: "zoom",
   DISSOLVE: "dissolve",
   WIPE: "wipe",
+  BLUR: "blur",
+  DIP_TO_BLACK: "dip-to-black",
+  DIP_TO_WHITE: "dip-to-white",
 } as const;
 
 export type TransitionType = (typeof TransitionTypes)[keyof typeof TransitionTypes];

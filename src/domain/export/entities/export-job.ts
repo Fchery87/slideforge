@@ -18,3 +18,20 @@ export interface ExportJob {
   completedAt: Date | null;
   createdAt: Date;
 }
+
+const VALID_TRANSITIONS: Record<ExportStatus, ExportStatus[]> = {
+  queued: ["processing", "failed"],    // failed = cancelled
+  processing: ["completed", "failed"],
+  completed: [],                        // terminal
+  failed: ["queued"],                   // retry creates new job in queued state
+};
+
+export function canTransition(from: ExportStatus, to: ExportStatus): boolean {
+  return VALID_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+export function validateTransition(from: ExportStatus, to: ExportStatus): void {
+  if (!canTransition(from, to)) {
+    throw new Error(`Invalid export status transition: ${from} → ${to}`);
+  }
+}

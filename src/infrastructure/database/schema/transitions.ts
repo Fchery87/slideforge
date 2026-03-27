@@ -3,7 +3,7 @@ import { slideshows } from "./slideshows";
 import { slides } from "./slides";
 
 export const transitionTypeEnum = pgEnum("transition_type", [
-  "none", "fade", "slide", "zoom", "dissolve", "wipe"
+  "none", "fade", "slide", "zoom", "dissolve", "wipe", "blur", "dip-to-black", "dip-to-white"
 ]);
 
 export const transitions = pgTable("transitions", {
