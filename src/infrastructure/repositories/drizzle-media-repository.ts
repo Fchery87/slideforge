@@ -1,6 +1,6 @@
 import { eq, and, sql, count } from "drizzle-orm";
 import { db } from "../database/client";
-import { mediaAssets, mediaFolders } from "../database/schema";
+import { mediaAssets, mediaFolders, canvasObjects, audioTracks } from "../database/schema";
 import type { IMediaAssetRepository } from "@/domain/media/repositories/media-asset-repository.interface";
 import type { MediaAsset } from "@/domain/media/entities/media-asset";
 import type { MediaFolder } from "@/domain/media/entities/media-folder";
@@ -71,5 +71,27 @@ export class DrizzleMediaRepository implements IMediaAssetRepository {
 
   async findFoldersByUserId(userId: string): Promise<MediaFolder[]> {
     return db.select().from(mediaFolders).where(eq(mediaFolders.userId, userId)) as Promise<MediaFolder[]>;
+  }
+
+  async isAssetInUse(assetId: string): Promise<boolean> {
+    // Check canvas_objects where properties contain the asset URL or sourceAssetId
+    const asset = await this.findById(assetId);
+    if (!asset) return false;
+
+    // Check if asset is used in audio_tracks
+    const audioTrackUsage = await db
+      .select({ count: count() })
+      .from(audioTracks)
+      .where(eq(audioTracks.mediaAssetId, assetId));
+
+    if (audioTrackUsage[0]?.count > 0) return true;
+
+    // Check if asset is used in canvas_objects via sourceAssetId
+    const canvasUsage = await db
+      .select({ count: count() })
+      .from(canvasObjects)
+      .where(eq(canvasObjects.sourceAssetId, assetId));
+
+    return canvasUsage[0]?.count > 0;
   }
 }

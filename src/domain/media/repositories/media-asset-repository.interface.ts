@@ -9,4 +9,5 @@ export interface IMediaAssetRepository {
   delete(id: string): Promise<void>;
   createFolder(folder: MediaFolder): Promise<MediaFolder>;
   findFoldersByUserId(userId: string): Promise<MediaFolder[]>;
+  isAssetInUse(assetId: string): Promise<boolean>;
 }
