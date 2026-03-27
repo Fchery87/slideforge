@@ -25,7 +25,31 @@ import {
   Check,
   Maximize2,
   Monitor,
+  FileText,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
+
+const STATUS_CONFIG = {
+  draft: { label: "Draft", color: "bg-slate-500/30 text-slate-300", icon: FileText },
+  exporting: { label: "Exporting", color: "bg-amber-500/30 text-amber-300", icon: Loader2 },
+  completed: { label: "Completed", color: "bg-emerald-500/30 text-emerald-300", icon: CheckCircle2 },
+  failed: { label: "Failed", color: "bg-red-500/30 text-red-300", icon: AlertCircle },
+};
+
+const OCCASION_LABELS: Record<string, string> = {
+  birthday: "Birthday",
+  wedding: "Wedding",
+  anniversary: "Anniversary",
+  memorial: "Memorial",
+  graduation: "Graduation",
+  baby_shower: "Baby Shower",
+  family_recap: "Family Recap",
+  holiday: "Holiday",
+  presentation: "Presentation",
+  custom: "",
+};
 
 export function EditorTopBar() {
   const {
@@ -125,6 +149,28 @@ export function EditorTopBar() {
           className="h-7 w-60 border-none bg-transparent text-sm font-medium text-slate-200 placeholder:text-slate-600 focus-visible:ring-0"
           placeholder="Untitled Slideshow"
         />
+
+        {/* Status badge */}
+        {slideshow?.status && (
+          <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_CONFIG[slideshow.status].color}`}>
+            {slideshow.status === "exporting" ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              (() => {
+                const StatusIcon = STATUS_CONFIG[slideshow.status].icon;
+                return <StatusIcon className="h-3 w-3" />;
+              })()
+            )}
+            {STATUS_CONFIG[slideshow.status].label}
+          </div>
+        )}
+
+        {/* Occasion type */}
+        {slideshow?.occasionType && OCCASION_LABELS[slideshow.occasionType] && (
+          <div className="rounded px-1.5 py-0.5 text-[10px] text-slate-500">
+            {OCCASION_LABELS[slideshow.occasionType]}
+          </div>
+        )}
 
         {/* Save indicator */}
         <div className="flex items-center gap-1.5 text-[10px]">
