@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useEditorStore } from "@/presentation/stores/editor-store";
+import { persistSlideshow } from "@/presentation/hooks/use-autosave";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -39,6 +40,7 @@ export function EditorTopBar() {
     canRedo,
     setPreviewMode,
     setPresenterMode,
+    updateSlideshowMeta,
   } = useEditorStore();
 
   const [title, setTitle] = useState(slideshow?.title ?? "");
@@ -54,16 +56,8 @@ export function EditorTopBar() {
     if (!slideshow || !isDirty) return;
     setSaving(true);
     try {
-      await fetch(`/api/slideshows/${slideshow.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: slideshow.title,
-          slides: slideshow.slides,
-          transitions: slideshow.transitions,
-          audioTracks: slideshow.audioTracks,
-        }),
-      });
+      const slideshowToSave = { ...slideshow, title };
+      await persistSlideshow(slideshowToSave);
       markClean();
       setSaved(true);
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -73,10 +67,11 @@ export function EditorTopBar() {
     } finally {
       setSaving(false);
     }
-  }, [slideshow, isDirty, markClean]);
+  }, [slideshow, isDirty, markClean, title]);
 
   const handleTitleBlur = useCallback(async () => {
     if (!slideshow || title === slideshow.title) return;
+    updateSlideshowMeta({ title });
     try {
       await fetch(`/api/slideshows/${slideshow.id}`, {
         method: "PUT",
@@ -86,7 +81,7 @@ export function EditorTopBar() {
     } catch (err) {
       console.error("Title update failed:", err);
     }
-  }, [slideshow, title]);
+  }, [slideshow, title, updateSlideshowMeta]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

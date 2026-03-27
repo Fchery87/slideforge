@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import {
   Copy,
@@ -9,9 +9,6 @@ import {
   Layers,
   Ungroup,
   Trash2,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   ArrowUp,
   ArrowDown,
   Grid3X3,
@@ -37,16 +34,24 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
     groupObjects,
     ungroupObject,
     reorderObjects,
-    clipboard,
     canPaste,
   } = useEditorStore();
 
   const currentSlide = slideshow?.slides[currentSlideIndex];
-  const selectedObject = currentSlide?.canvasObjects.find(
-    (o) => o.id === selectedObjectId
-  );
-  const isGroup = selectedObject?.type === "group";
+  const selectedObjects = currentSlide?.canvasObjects.filter((o) =>
+    selectedObjectIds.includes(o.id)
+  ) ?? [];
+  const selectedObject = currentSlide?.canvasObjects.find((o) => o.id === selectedObjectId);
   const hasMultipleSelected = selectedObjectIds.length > 1;
+  const activeGroupId =
+    selectedObject?.type === "group"
+      ? selectedObject.id
+      : selectedObject?.groupId ??
+        (selectedObjects.length > 0 &&
+        selectedObjects.every((item) => item.groupId && item.groupId === selectedObjects[0]?.groupId)
+          ? selectedObjects[0]?.groupId ?? null
+          : null);
+  const isGroup = !!activeGroupId;
 
   const handleAction = useCallback(
     (action: () => void) => {
@@ -141,7 +146,8 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
                   icon={Ungroup}
                   label="Ungroup"
                   onClick={() =>
-                    handleAction(() => ungroupObject(currentSlide.id, selectedObjectId))
+                    activeGroupId &&
+                    handleAction(() => ungroupObject(currentSlide.id, activeGroupId))
                   }
                 />
               ) : hasMultipleSelected ? (

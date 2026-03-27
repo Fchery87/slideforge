@@ -2,7 +2,7 @@ export function getMediaFileUrl(assetId: string) {
   return `/api/media/${assetId}/file`;
 }
 
-export async function resolveCanvasImageUrl(assetId: string) {
+export async function resolveMediaAssetUrl(assetId: string) {
   const fallbackUrl = getMediaFileUrl(assetId);
 
   try {
@@ -19,4 +19,8 @@ export async function resolveCanvasImageUrl(assetId: string) {
   } catch {
     return fallbackUrl;
   }
+}
+
+export async function resolveCanvasImageUrl(assetId: string) {
+  return resolveMediaAssetUrl(assetId);
 }

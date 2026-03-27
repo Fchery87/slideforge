@@ -57,6 +57,34 @@ export function EnhancedMediaBrowser({ type }: MediaBrowserProps) {
     fetchMedia();
   }, [type]);
 
+  useEffect(() => {
+    const handleRefresh = () => {
+      setLoading(true);
+      fetch(`/api/media?type=${type}&limit=100`)
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("Failed to load media");
+          }
+          return res.json();
+        })
+        .then((data) => {
+          const items = data.items ?? data;
+          setAssets(items);
+          setFilteredAssets(items);
+          setAvailableTags(extractTags(items));
+        })
+        .catch(() => {
+          setAssets([]);
+          setFilteredAssets([]);
+        })
+        .finally(() => setLoading(false));
+    };
+
+    window.addEventListener("slideforge:media-library-changed", handleRefresh);
+    return () =>
+      window.removeEventListener("slideforge:media-library-changed", handleRefresh);
+  }, [type]);
+
   // Filter assets based on search and tags
   useEffect(() => {
     let filtered = assets;

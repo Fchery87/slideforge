@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
+import { resolveMediaAssetUrl } from "@/presentation/components/editor/canvas/media-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Music, Trash2, Play, Pause, Volume2, Scissors } from "lucide-react";
+import { buildWaveformPeaks } from "./waveform-utils";
 
 interface AudioAsset {
   id: string;
@@ -37,19 +39,19 @@ export function EnhancedAudioPanel() {
 
   const generateSimpleWaveform = useCallback(async (mediaAssetId: string, trackId: string) => {
     try {
-      const audio = new Audio(`/api/media/${mediaAssetId}/file`);
-      audio.crossOrigin = "anonymous";
+      const assetUrl = await resolveMediaAssetUrl(mediaAssetId);
+      const response = await fetch(assetUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioContext = new AudioContext();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+      const peaks = buildWaveformPeaks(audioBuffer.getChannelData(0), 80);
 
-      const handleLoaded = () => {
-        const peaks = Array.from({ length: 100 }, () => Math.random() * 0.8 + 0.2);
-        setWaveforms((prev) => ({
-          ...prev,
-          [trackId]: { peaks, duration: audio.duration },
-        }));
-        audio.removeEventListener("loadedmetadata", handleLoaded);
-      };
-      audio.addEventListener("loadedmetadata", handleLoaded);
-      audio.load();
+      setWaveforms((prev) => ({
+        ...prev,
+        [trackId]: { peaks, duration: audioBuffer.duration },
+      }));
+
+      await audioContext.close();
     } catch {
       // Silent fail
     }
@@ -118,7 +120,7 @@ export function EnhancedAudioPanel() {
     setSelectedTrackId(null);
   }
 
-  const togglePlayback = (trackId: string, mediaAssetId: string) => {
+  const togglePlayback = async (trackId: string, mediaAssetId: string) => {
     if (playingTrackId === trackId) {
       // Pause
       const audio = audioRefs.current[trackId];
@@ -136,7 +138,7 @@ export function EnhancedAudioPanel() {
       // Play new track
       let audio = audioRefs.current[trackId];
       if (!audio) {
-        audio = new Audio(`/api/media/${mediaAssetId}/file`);
+        audio = new Audio(await resolveMediaAssetUrl(mediaAssetId));
         audio.crossOrigin = "anonymous";
         audioRefs.current[trackId] = audio;
       }

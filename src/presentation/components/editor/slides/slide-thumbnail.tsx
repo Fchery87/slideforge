@@ -4,7 +4,8 @@ import { memo } from "react";
 import { cn } from "@/lib/utils";
 import type { Slide } from "@/domain/slideshow/entities/slide";
 import type { CanvasObject } from "@/domain/slideshow/entities/canvas-object";
-import { resolveBackgroundToCss } from "@/domain/slideshow/value-objects/slide-background";
+import { resolveBackgroundToStyle } from "@/domain/slideshow/value-objects/slide-background";
+import { getMediaFileUrl } from "@/presentation/components/editor/canvas/media-url";
 
 interface SlideThumbnailProps {
   slide: Slide;
@@ -97,7 +98,11 @@ export const SlideThumbnail = memo(function SlideThumbnail({
   onDragOver,
   onDrop,
 }: SlideThumbnailProps) {
-  const bgColor = resolveBackgroundToCss(slide.background, "#1a1a2e");
+  const backgroundStyle = resolveBackgroundToStyle(
+    slide.background,
+    "#1a1a2e",
+    getMediaFileUrl
+  );
 
   return (
     <div
@@ -116,7 +121,7 @@ export const SlideThumbnail = memo(function SlideThumbnail({
       {/* Thumbnail preview */}
       <div
         className="relative aspect-video w-28 overflow-hidden"
-        style={{ backgroundColor: bgColor }}
+        style={backgroundStyle}
       >
         {slide.canvasObjects.map((obj) => (
           <ObjectPreview key={obj.id} obj={obj} />

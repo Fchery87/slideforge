@@ -58,6 +58,7 @@ export function MediaUploadZone() {
           }),
         });
         if (!confirmRes.ok) throw new Error("Failed to register media");
+        window.dispatchEvent(new CustomEvent("slideforge:media-library-changed"));
       } catch (err) {
         console.error("Upload error:", err);
       }

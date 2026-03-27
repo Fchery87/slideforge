@@ -1,11 +1,12 @@
 "use client";
 
+import { useRef } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Pause, Film } from "lucide-react";
+import { Play, Film } from "lucide-react";
 import type { AnimationType, AnimationConfig } from "@/domain/slideshow/entities/canvas-object";
 
 const ANIMATION_TYPES: { value: AnimationType; label: string; category: string }[] = [
@@ -32,6 +33,7 @@ const EASING_OPTIONS = [
 ];
 
 export function AnimationPanel() {
+  const previewRef = useRef<HTMLDivElement>(null);
   const {
     slideshow,
     currentSlideIndex,
@@ -67,6 +69,64 @@ export function AnimationPanel() {
 
   const animation = getAnimation();
   const fps = slideshow?.fps || 30;
+
+  const previewAnimation = () => {
+    const element = previewRef.current;
+    if (!element || animation.type === "none") return;
+
+    element.getAnimations().forEach((instance) => instance.cancel());
+
+    const duration = Math.max((animation.durationFrames / fps) * 1000, 100);
+    const delay = Math.max((animation.delayFrames / fps) * 1000, 0);
+    let keyframes: Keyframe[] = [{ opacity: 1, transform: "none" }];
+
+    switch (animation.type) {
+      case "fade-in":
+        keyframes = [{ opacity: 0 }, { opacity: 1 }];
+        break;
+      case "fade-out":
+        keyframes = [{ opacity: 1 }, { opacity: 0 }];
+        break;
+      case "slide-up":
+        keyframes = [{ opacity: 0, transform: "translateY(32px)" }, { opacity: 1, transform: "translateY(0)" }];
+        break;
+      case "slide-down":
+        keyframes = [{ opacity: 0, transform: "translateY(-32px)" }, { opacity: 1, transform: "translateY(0)" }];
+        break;
+      case "slide-left":
+        keyframes = [{ opacity: 0, transform: "translateX(32px)" }, { opacity: 1, transform: "translateX(0)" }];
+        break;
+      case "slide-right":
+        keyframes = [{ opacity: 0, transform: "translateX(-32px)" }, { opacity: 1, transform: "translateX(0)" }];
+        break;
+      case "scale-in":
+        keyframes = [{ opacity: 0, transform: "scale(0.7)" }, { opacity: 1, transform: "scale(1)" }];
+        break;
+      case "scale-out":
+        keyframes = [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(1.15)" }];
+        break;
+      case "rotate-in":
+        keyframes = [{ opacity: 0, transform: "rotate(-14deg) scale(0.92)" }, { opacity: 1, transform: "rotate(0deg) scale(1)" }];
+        break;
+      case "bounce":
+        keyframes = [
+          { transform: "translateY(0)" },
+          { transform: "translateY(-18px)" },
+          { transform: "translateY(0)" },
+        ];
+        break;
+      case "typewriter":
+        keyframes = [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }];
+        break;
+    }
+
+    element.animate(keyframes, {
+      duration,
+      delay,
+      easing: animation.easing === "bounce" ? "cubic-bezier(0.34, 1.56, 0.64, 1)" : animation.easing,
+      fill: "both",
+    });
+  };
 
   if (!selectedObject) {
     return (
@@ -179,17 +239,25 @@ export function AnimationPanel() {
 
           <Separator className="bg-white/[0.08]" />
 
+          <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+            <Label className="mb-2 block text-[10px] uppercase tracking-wider text-slate-500">
+              Preview
+            </Label>
+            <div className="flex h-24 items-center justify-center rounded-md bg-[#101425]">
+              <div
+                ref={previewRef}
+                className="rounded-md bg-rose-500 px-4 py-2 text-sm font-medium text-white shadow-lg"
+              >
+                {selectedObject.type === "text" ? "Animated text" : "Animated element"}
+              </div>
+            </div>
+          </div>
+
           {/* Preview Button */}
           <Button
             variant="outline"
             className="w-full border-white/[0.08] text-slate-300 hover:bg-white/[0.04]"
-            onClick={() => {
-              // Trigger preview animation
-              const event = new CustomEvent("preview-animation", {
-                detail: { objectId: selectedObject.id, animation },
-              });
-              window.dispatchEvent(event);
-            }}
+            onClick={previewAnimation}
           >
             <Play className="mr-2 h-4 w-4" />
             Preview Animation

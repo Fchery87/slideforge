@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import {
+  ActiveSelection,
   Canvas,
   Rect,
   Ellipse,
@@ -12,8 +13,8 @@ import {
 } from "fabric";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import type { CanvasObject } from "@/domain/slideshow/entities/canvas-object";
-import { resolveBackgroundToCss } from "@/domain/slideshow/value-objects/slide-background";
-import { resolveCanvasImageUrl } from "./media-url";
+import { resolveBackgroundToStyle } from "@/domain/slideshow/value-objects/slide-background";
+import { getMediaFileUrl, resolveCanvasImageUrl } from "./media-url";
 
 interface FabricCanvasProps {
   aspectRatio: number;
@@ -23,6 +24,11 @@ const CANVAS_WIDTH = 960;
 
 const getId = (obj: FabricObject): string | null =>
   ((obj as unknown as Record<string, unknown>)._slideforgeId as string) ?? null;
+
+const snapValue = (value: number, gridSize: number, threshold: number): number => {
+  const snapped = Math.round(value / gridSize) * gridSize;
+  return Math.abs(snapped - value) <= threshold ? snapped : value;
+};
 
 async function canvasObjectToFabric(obj: CanvasObject): Promise<FabricObject | null> {
   const base = {
@@ -144,8 +150,129 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fabricRef = useRef<Canvas | null>(null);
   const syncingRef = useRef(false);
+  const expandingGroupSelectionRef = useRef(false);
 
   const canvasHeight = CANVAS_WIDTH / aspectRatio;
+
+  const syncCanvasSelectionToStore = useCallback((canvas: Canvas) => {
+    const activeObject = canvas.getActiveObject();
+    if (!activeObject) {
+      storeRef.current.selectObject(null);
+      return;
+    }
+
+    if ("getObjects" in activeObject && typeof activeObject.getObjects === "function") {
+      const ids = activeObject
+        .getObjects()
+        .map((item: FabricObject) => getId(item))
+        .filter(Boolean) as string[];
+      if (ids.length > 1) {
+        storeRef.current.selectObjects(ids);
+        return;
+      }
+    }
+
+    const id = getId(activeObject);
+    storeRef.current.selectObject(id);
+  }, []);
+
+  const expandGroupedSelection = useCallback((canvas: Canvas) => {
+    if (expandingGroupSelectionRef.current) return;
+
+    const activeObject = canvas.getActiveObject();
+    if (!activeObject || ("getObjects" in activeObject && typeof activeObject.getObjects === "function")) {
+      return;
+    }
+
+    const activeId = getId(activeObject);
+    if (!activeId) return;
+
+    const store = storeRef.current;
+    const currentSlide = store.slideshow?.slides[store.currentSlideIndex];
+    const currentObject = currentSlide?.canvasObjects.find((item) => item.id === activeId);
+    const groupId = currentObject?.groupId;
+    if (!currentSlide || !groupId) return;
+
+    const groupIds = currentSlide.canvasObjects
+      .filter((item) => item.groupId === groupId)
+      .map((item) => item.id);
+
+    if (groupIds.length < 2) return;
+
+    const groupMembers = canvas
+      .getObjects()
+      .filter((item) => {
+        const id = getId(item);
+        return !!id && groupIds.includes(id);
+      });
+
+    if (groupMembers.length < 2) return;
+
+    expandingGroupSelectionRef.current = true;
+    const selection = new ActiveSelection(groupMembers, { canvas });
+    canvas.setActiveObject(selection);
+    canvas.requestRenderAll();
+    store.selectObjects(groupIds);
+    expandingGroupSelectionRef.current = false;
+  }, []);
+
+  const syncFabricObjectsToStore = useCallback((fabricObjects: FabricObject[]) => {
+    const store = storeRef.current;
+    const currentSlide = store.slideshow?.slides[store.currentSlideIndex] ?? null;
+    if (!currentSlide) return;
+
+    for (const item of fabricObjects) {
+      const id = getId(item);
+      if (!id) continue;
+
+      const scaleX = item.scaleX ?? 1;
+      const scaleY = item.scaleY ?? 1;
+
+      store.updateObject(currentSlide.id, id, {
+        x: item.left ?? 0,
+        y: item.top ?? 0,
+        width: (item.width ?? 0) * scaleX,
+        height: (item.height ?? 0) * scaleY,
+        rotation: item.angle ?? 0,
+        opacity: item.opacity ?? 1,
+      });
+
+      item.set({ scaleX: 1, scaleY: 1 });
+    }
+
+    store.markDirty();
+  }, []);
+
+  const updateGridOverlay = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const wrapper = canvas.wrapperEl;
+    if (!wrapper) return;
+
+    let overlay = wrapper.querySelector("[data-slideforge-grid]") as HTMLDivElement | null;
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.setAttribute("data-slideforge-grid", "true");
+      Object.assign(overlay.style, {
+        position: "absolute",
+        inset: "0",
+        pointerEvents: "none",
+      });
+      wrapper.insertBefore(overlay, wrapper.firstChild);
+    }
+
+    const { gridEnabled, gridSize } = storeRef.current;
+    if (!gridEnabled) {
+      overlay.style.display = "none";
+      return;
+    }
+
+    overlay.style.display = "block";
+    overlay.style.backgroundImage =
+      "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)";
+    overlay.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+  }, []);
 
   // Use refs for values needed in event handlers to avoid re-creating the canvas
   const storeRef = useRef(useEditorStore.getState());
@@ -165,8 +292,19 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
     syncingRef.current = true;
     canvas.clear();
 
-    const slideBg = resolveBackgroundToCss(currentSlide.background, state.slideshow?.backgroundColor ?? "#1a1a2e");
-    canvas.backgroundColor = slideBg;
+    canvas.backgroundColor = "transparent";
+
+    const wrapper = containerRef.current?.querySelector("[data-canvas-sizer]") as HTMLElement | null;
+    if (wrapper) {
+      Object.assign(
+        wrapper.style,
+        resolveBackgroundToStyle(
+          currentSlide.background,
+          state.slideshow?.backgroundColor ?? "#1a1a2e",
+          getMediaFileUrl
+        )
+      );
+    }
 
     for (const obj of currentSlide.canvasObjects) {
       const fabricObj = await canvasObjectToFabric(obj);
@@ -202,62 +340,69 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
     });
 
     fabricRef.current = canvas;
+    updateGridOverlay();
 
-    canvas.on("selection:created", (e) => {
-      const selected = e.selected?.[0];
-      if (selected) {
-        const id = getId(selected);
-        if (id) storeRef.current.selectObject(id);
-      }
+    canvas.on("selection:created", () => {
+      if (expandingGroupSelectionRef.current) return;
+      expandGroupedSelection(canvas);
+      syncCanvasSelectionToStore(canvas);
     });
 
-    canvas.on("selection:updated", (e) => {
-      const selected = e.selected?.[0];
-      if (selected) {
-        const id = getId(selected);
-        if (id) storeRef.current.selectObject(id);
-      }
+    canvas.on("selection:updated", () => {
+      if (expandingGroupSelectionRef.current) return;
+      expandGroupedSelection(canvas);
+      syncCanvasSelectionToStore(canvas);
     });
 
     canvas.on("selection:cleared", () => {
       storeRef.current.selectObject(null);
     });
 
+    canvas.on("object:moving", (e) => {
+      const target = e.target;
+      if (!target || !storeRef.current.snapEnabled) return;
+
+      if ("getObjects" in target && typeof target.getObjects === "function") {
+        for (const item of target.getObjects()) {
+          item.set({
+            left: snapValue(item.left ?? 0, storeRef.current.gridSize, storeRef.current.snapThreshold),
+            top: snapValue(item.top ?? 0, storeRef.current.gridSize, storeRef.current.snapThreshold),
+          });
+        }
+        return;
+      }
+
+      target.set({
+        left: snapValue(target.left ?? 0, storeRef.current.gridSize, storeRef.current.snapThreshold),
+        top: snapValue(target.top ?? 0, storeRef.current.gridSize, storeRef.current.snapThreshold),
+      });
+    });
+
     canvas.on("object:modified", (e) => {
       if (syncingRef.current) return;
-      const store = storeRef.current;
-      const currentSlide = store.slideshow?.slides[store.currentSlideIndex] ?? null;
-      if (!currentSlide) return;
-
       const target = e.target;
       if (!target) return;
-      const id = getId(target);
-      if (!id) return;
 
-      const scaleX = target.scaleX ?? 1;
-      const scaleY = target.scaleY ?? 1;
+      if ("getObjects" in target && typeof target.getObjects === "function") {
+        syncFabricObjectsToStore(target.getObjects());
+        syncCanvasSelectionToStore(canvas);
+        return;
+      }
 
-      store.updateObject(currentSlide.id, id, {
-        x: target.left ?? 0,
-        y: target.top ?? 0,
-        width: (target.width ?? 0) * scaleX,
-        height: (target.height ?? 0) * scaleY,
-        rotation: target.angle ?? 0,
-        opacity: target.opacity ?? 1,
-      });
-
-      target.set({ scaleX: 1, scaleY: 1 });
-      store.markDirty();
+      syncFabricObjectsToStore([target]);
+      syncCanvasSelectionToStore(canvas);
     });
 
     // Initial sync
     syncStoreToCanvas();
 
     return () => {
+      const wrapper = canvas.wrapperEl;
+      wrapper?.querySelector("[data-slideforge-grid]")?.remove();
       canvas.dispose();
       fabricRef.current = null;
     };
-  }, [canvasHeight, syncStoreToCanvas]);
+  }, [canvasHeight, expandGroupedSelection, syncCanvasSelectionToStore, syncFabricObjectsToStore, syncStoreToCanvas, updateGridOverlay]);
 
   // Keyboard shortcuts — use a separate effect with a stable handler
   useEffect(() => {
@@ -346,13 +491,27 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
       const canvas = fabricRef.current;
       if (!canvas || syncingRef.current) return;
 
-      const selectedId = state.selectedObjectId;
+      const selectedIds = state.selectedObjectIds;
       const activeObj = canvas.getActiveObject();
-      const activeId = activeObj ? getId(activeObj) : null;
+      const activeIds = activeObj && "getObjects" in activeObj && typeof activeObj.getObjects === "function"
+        ? activeObj.getObjects().map((item: FabricObject) => getId(item)).filter(Boolean) as string[]
+        : activeObj
+          ? [getId(activeObj)].filter(Boolean) as string[]
+          : [];
 
-      if (selectedId !== activeId) {
-        if (selectedId) {
-          const target = canvas.getObjects().find((o) => getId(o) === selectedId);
+      if (JSON.stringify(selectedIds) !== JSON.stringify(activeIds)) {
+        if (selectedIds.length > 1) {
+          const objects = canvas.getObjects().filter((item) => {
+            const id = getId(item);
+            return !!id && selectedIds.includes(id);
+          });
+          if (objects.length > 1) {
+            const selection = new ActiveSelection(objects, { canvas });
+            canvas.setActiveObject(selection);
+            canvas.renderAll();
+          }
+        } else if (selectedIds.length === 1) {
+          const target = canvas.getObjects().find((o) => getId(o) === selectedIds[0]);
           if (target) {
             canvas.setActiveObject(target);
             canvas.renderAll();
@@ -378,7 +537,8 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
       const containerH = container!.clientHeight;
       if (containerW === 0 || containerH === 0) return;
 
-      const scale = Math.min(containerW / CANVAS_WIDTH, containerH / canvasHeight);
+      const baseScale = Math.min(containerW / CANVAS_WIDTH, containerH / canvasHeight);
+      const scale = baseScale * storeRef.current.canvasZoom;
 
       wrapper.style.transform = `scale(${scale})`;
       wrapper.style.transformOrigin = "top left";
@@ -405,6 +565,12 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
       resizeObserver.disconnect();
     };
   }, [canvasHeight]);
+
+  useEffect(() => {
+    return useEditorStore.subscribe(() => {
+      updateGridOverlay();
+    });
+  }, [updateGridOverlay]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -466,6 +632,7 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
           createdAt: new Date(),
           updatedAt: new Date(),
         });
+        store.selectObject(id);
       } catch {
         // Invalid drag data
       }

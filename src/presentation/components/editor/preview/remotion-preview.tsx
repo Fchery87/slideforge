@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { SlideshowComposition } from "@/remotion/compositions/slideshow-composition";

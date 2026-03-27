@@ -2,12 +2,13 @@
 
 import type { Slide } from "@/domain/slideshow/entities/slide";
 import type { CanvasObject, TextProperties, ShapeProperties, ImageProperties } from "@/domain/slideshow/entities/canvas-object";
-import { resolveBackgroundToCss, resolveBackgroundToStyle } from "@/domain/slideshow/value-objects/slide-background";
+import { resolveBackgroundToStyle } from "@/domain/slideshow/value-objects/slide-background";
+import { getMediaFileUrl } from "@/presentation/components/editor/canvas/media-url";
 
 interface SlideRendererProps {
   slide: Slide;
   fallbackBg?: string;
-  mediaUrlPrefix?: string;
+  mediaUrlResolver?: (mediaAssetId: string) => string;
   width?: number;
   height?: number;
   className?: string;
@@ -18,10 +19,15 @@ interface ObjectRendererProps {
   obj: CanvasObject;
   containerWidth: number;
   containerHeight: number;
-  mediaUrlPrefix?: string;
+  mediaUrlResolver?: (mediaAssetId: string) => string;
 }
 
-function ObjectRenderer({ obj, containerWidth, containerHeight, mediaUrlPrefix = "/api/media" }: ObjectRendererProps) {
+function ObjectRenderer({
+  obj,
+  containerWidth,
+  containerHeight,
+  mediaUrlResolver = getMediaFileUrl,
+}: ObjectRendererProps) {
   const style: React.CSSProperties = {
     position: "absolute",
     left: `${(obj.x / containerWidth) * 100}%`,
@@ -41,7 +47,7 @@ function ObjectRenderer({ obj, containerWidth, containerHeight, mediaUrlPrefix =
           style={{
             ...style,
             fontFamily: props.fontFamily || "sans-serif",
-            fontSize: `${(props.fontSize / containerWidth) * 100}vw`,
+            fontSize: `${(props.fontSize / containerHeight) * 100}%`,
             color: props.fontColor || "#ffffff",
             fontWeight: props.fontWeight || "normal",
             textAlign: props.textAlign || "left",
@@ -124,7 +130,7 @@ function ObjectRenderer({ obj, containerWidth, containerHeight, mediaUrlPrefix =
       const props = obj.properties as ImageProperties;
       return (
         <img
-          src={`${mediaUrlPrefix}/${props.mediaAssetId}/file`}
+          src={mediaUrlResolver(props.mediaAssetId)}
           alt=""
           style={{
             ...style,
@@ -149,13 +155,17 @@ function ObjectRenderer({ obj, containerWidth, containerHeight, mediaUrlPrefix =
 export function SlideRenderer({
   slide,
   fallbackBg = "#000000",
-  mediaUrlPrefix,
+  mediaUrlResolver = getMediaFileUrl,
   width = 1920,
   height = 1080,
   className,
   style,
 }: SlideRendererProps) {
-  const backgroundStyle = resolveBackgroundToStyle(slide.background, fallbackBg);
+  const backgroundStyle = resolveBackgroundToStyle(
+    slide.background,
+    fallbackBg,
+    mediaUrlResolver
+  );
   const sortedObjects = [...slide.canvasObjects].sort(
     (a, b) => a.zIndex - b.zIndex
   );
@@ -178,7 +188,7 @@ export function SlideRenderer({
           obj={obj}
           containerWidth={width}
           containerHeight={height}
-          mediaUrlPrefix={mediaUrlPrefix}
+          mediaUrlResolver={mediaUrlResolver}
         />
       ))}
     </div>

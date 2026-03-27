@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +13,15 @@ import {
   Check,
   Trash2
 } from "lucide-react";
-import { resolveBackgroundToCss, createSolidBackground, createGradientBackground, type SlideBackground } from "@/domain/slideshow/value-objects/slide-background";
+import type { MediaAsset } from "@/domain/media/entities/media-asset";
+import {
+  resolveBackgroundToStyle,
+  createSolidBackground,
+  createGradientBackground,
+  createImageBackground,
+  type SlideBackground,
+} from "@/domain/slideshow/value-objects/slide-background";
+import { getMediaFileUrl } from "@/presentation/components/editor/canvas/media-url";
 
 const PRESET_GRADIENTS = [
   { name: "Sunset", css: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
@@ -49,8 +57,16 @@ export function BackgroundPanel() {
     currentSlideIndex,
     updateSlide,
   } = useEditorStore();
+  const [imageAssets, setImageAssets] = useState<MediaAsset[]>([]);
 
   const currentSlide = slideshow?.slides[currentSlideIndex];
+
+  useEffect(() => {
+    fetch("/api/media?type=image&limit=12")
+      .then((response) => response.json())
+      .then((data) => setImageAssets(data.items ?? []))
+      .catch(() => setImageAssets([]));
+  }, []);
 
   const setSolidColor = useCallback((color: string) => {
     if (!currentSlide) return;
@@ -74,7 +90,11 @@ export function BackgroundPanel() {
   }, [currentSlide, currentSlideIndex, updateSlide]);
 
   const currentBg = getBackgroundValue(currentSlide?.background);
-  const resolvedBg = resolveBackgroundToCss(currentSlide?.background, slideshow?.backgroundColor ?? "#1a1a2e");
+  const backgroundPreviewStyle = resolveBackgroundToStyle(
+    currentSlide?.background,
+    slideshow?.backgroundColor ?? "#1a1a2e",
+    getMediaFileUrl
+  );
 
   if (!currentSlide) {
     return (
@@ -102,9 +122,7 @@ export function BackgroundPanel() {
         </Label>
         <div
           className="h-24 w-full rounded-lg border border-white/10"
-          style={{
-            background: resolvedBg,
-          }}
+          style={backgroundPreviewStyle}
         />
         {currentSlide.background.kind !== "theme-default" && (
           <Button
@@ -222,9 +240,36 @@ export function BackgroundPanel() {
           <ImageIcon className="mr-1 inline h-3 w-3" />
           Image Background
         </Label>
-        <p className="text-xs text-slate-500">
-          Coming soon: Upload images as slide backgrounds
-        </p>
+        {imageAssets.length === 0 ? (
+          <p className="text-xs text-slate-500">
+            Upload images in the media panel to use them as backgrounds.
+          </p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {imageAssets.map((asset) => (
+              <button
+                key={asset.id}
+                onClick={() => {
+                  if (!currentSlide) return;
+                  updateSlide(currentSlideIndex, {
+                    background: createImageBackground(asset.id, "cover"),
+                  });
+                }}
+                className={`relative aspect-video overflow-hidden rounded-lg border-2 ${
+                  currentSlide.background.kind === "image" &&
+                  currentSlide.background.mediaAssetId === asset.id
+                    ? "border-rose-500"
+                    : "border-transparent hover:border-white/30"
+                }`}
+              >
+                <div
+                  className="absolute inset-0 bg-center bg-cover"
+                  style={{ backgroundImage: `url(${getMediaFileUrl(asset.id)})` }}
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { MediaAsset } from "@/domain/media/entities/media-asset";
+import { getMediaFileUrl } from "@/presentation/components/editor/canvas/media-url";
 
 interface PresignedUrlMap {
   [assetId: string]: string;
@@ -28,6 +29,7 @@ export function usePresignedUrls(assets: MediaAsset[]) {
       setUrls((prev) => ({ ...prev, [assetId]: presignedUrl }));
     } catch (err) {
       console.error("Failed to fetch presigned URL for", assetId, err);
+      setUrls((prev) => ({ ...prev, [assetId]: getMediaFileUrl(assetId) }));
     } finally {
       setLoading((prev) => {
         const next = new Set(prev);

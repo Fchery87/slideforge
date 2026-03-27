@@ -6,6 +6,10 @@ import { useEditorStore } from "@/presentation/stores/editor-store";
 import { getTotalDurationFrames } from "@/domain/slideshow/entities/slideshow";
 import { Button } from "@/components/ui/button";
 
+interface PreviewControlsProps {
+  className?: string;
+}
+
 function formatTime(frames: number, fps: number): string {
   const totalSeconds = frames / fps;
   const minutes = Math.floor(totalSeconds / 60);
@@ -14,7 +18,7 @@ function formatTime(frames: number, fps: number): string {
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${millis.toString().padStart(2, "0")}`;
 }
 
-export function PreviewControls() {
+export function PreviewControls({ className }: PreviewControlsProps) {
   const slideshow = useEditorStore((s) => s.slideshow);
   const isPlaying = useEditorStore((s) => s.isPlaying);
   const currentFrame = useEditorStore((s) => s.currentFrame);
@@ -50,12 +54,13 @@ export function PreviewControls() {
   if (!slideshow) return null;
 
   return (
-    <div className="flex items-center gap-3 border-t border-border bg-background px-4 py-2">
+    <div className={`flex items-center gap-3 px-4 py-2 ${className ?? ""}`.trim()}>
       <Button
         variant="ghost"
         size="icon-sm"
         onClick={togglePlay}
         aria-label={isPlaying ? "Pause" : "Play"}
+        className="text-slate-300 hover:text-white"
       >
         {isPlaying ? (
           <Pause className="size-3.5" />
@@ -64,7 +69,7 @@ export function PreviewControls() {
         )}
       </Button>
 
-      <span className="font-mono text-[0.7rem] text-muted-foreground tabular-nums">
+      <span className="font-mono text-[0.7rem] text-slate-500 tabular-nums">
         {formatTime(currentFrame, fps)}
       </span>
 
@@ -74,10 +79,10 @@ export function PreviewControls() {
         max={Math.max(totalFrames - 1, 0)}
         value={currentFrame}
         onChange={handleScrub}
-        className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-primary [&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary [&::-webkit-slider-thumb]:size-3 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-primary"
+        className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-white/10 accent-rose-500 [&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-rose-500 [&::-webkit-slider-thumb]:size-3 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-rose-500"
       />
 
-      <span className="font-mono text-[0.7rem] text-muted-foreground tabular-nums">
+      <span className="font-mono text-[0.7rem] text-slate-500 tabular-nums">
         {formatTime(totalFrames, fps)}
       </span>
     </div>

@@ -28,14 +28,13 @@ import type {
   ShapeProperties,
   ImageProperties,
 } from "@/domain/slideshow/entities/canvas-object";
-import { resolveBackgroundToCss, createSolidBackground } from "@/domain/slideshow/value-objects/slide-background";
+import { createSolidBackground } from "@/domain/slideshow/value-objects/slide-background";
 
 import { Resolutions } from "@/domain/slideshow/value-objects/resolution";
 
 import {
   EDITOR_FONTS,
   FONT_CATEGORIES,
-  type FontCategory,
 } from "@/presentation/components/editor/fonts/font-config";
 
 export function ObjectPropertiesPanel() {
@@ -99,19 +98,42 @@ export function ObjectPropertiesPanel() {
           <Label className="text-[10px] uppercase tracking-wider text-slate-500">
             Background Color
           </Label>
-          <div className="flex items-center gap-1.5 mt-1">
-            <input
-              type="color"
-              value={resolveBackgroundToCss(currentSlide.background, slideshow?.backgroundColor ?? "#1a1a2e")}
-              onChange={(e) => updateSlide(currentSlideIndex, { background: createSolidBackground(e.target.value) })}
-              className="h-7 w-8 cursor-pointer rounded border border-white/[0.08] bg-transparent"
-            />
-            <Input
-              value={resolveBackgroundToCss(currentSlide.background, slideshow?.backgroundColor ?? "#1a1a2e")}
-              onChange={(e) => updateSlide(currentSlideIndex, { background: createSolidBackground(e.target.value) })}
-              className="h-7 bg-white/[0.04] text-xs"
-            />
-          </div>
+          {currentSlide.background.kind === "solid" ||
+          currentSlide.background.kind === "theme-default" ? (
+            <div className="mt-1 flex items-center gap-1.5">
+              <input
+                type="color"
+                value={
+                  currentSlide.background.kind === "solid"
+                    ? currentSlide.background.color
+                    : slideshow?.backgroundColor ?? "#1a1a2e"
+                }
+                onChange={(e) =>
+                  updateSlide(currentSlideIndex, {
+                    background: createSolidBackground(e.target.value),
+                  })
+                }
+                className="h-7 w-8 cursor-pointer rounded border border-white/[0.08] bg-transparent"
+              />
+              <Input
+                value={
+                  currentSlide.background.kind === "solid"
+                    ? currentSlide.background.color
+                    : slideshow?.backgroundColor ?? "#1a1a2e"
+                }
+                onChange={(e) =>
+                  updateSlide(currentSlideIndex, {
+                    background: createSolidBackground(e.target.value),
+                  })
+                }
+                className="h-7 bg-white/[0.04] text-xs"
+              />
+            </div>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">
+              This slide uses a gradient or image background. Edit it in the Background panel.
+            </p>
+          )}
         </div>
 
         <div className="pt-4">

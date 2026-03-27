@@ -1,9 +1,7 @@
 import type { StateCreator } from "zustand";
-import type { EditorStore, DocumentSlice, HistorySlice } from "./types";
+import type { EditorStore, DocumentSlice } from "./types";
 import type { Slide } from "@/domain/slideshow/entities/slide";
 import type { CanvasObject } from "@/domain/slideshow/entities/canvas-object";
-import type { Transition } from "@/domain/slideshow/entities/transition";
-import type { AudioTrack } from "@/domain/slideshow/entities/audio-track";
 
 export const createDocumentSlice: StateCreator<
   EditorStore,
@@ -225,49 +223,14 @@ export const createDocumentSlice: StateCreator<
     get().pushToHistory();
     set((state) => {
       if (!state.slideshow || objectIds.length < 2) return state;
-
+      const normalizedIds = Array.from(new Set(objectIds));
       const groupId = crypto.randomUUID();
-      const maxZIndex = Math.max(
-        ...(state.slideshow.slides
-          .find((s) => s.id === slideId)
-          ?.canvasObjects.map((o) => o.zIndex) || [0])
-      );
-
-      const objects =
-        state.slideshow.slides
-          .find((s) => s.id === slideId)
-          ?.canvasObjects.filter((o) => objectIds.includes(o.id)) || [];
-
-      if (objects.length === 0) return state;
-
-      const minX = Math.min(...objects.map((o) => o.x));
-      const minY = Math.min(...objects.map((o) => o.y));
-      const maxX = Math.max(...objects.map((o) => o.x + o.width));
-      const maxY = Math.max(...objects.map((o) => o.y + o.height));
-
-      const groupObject: CanvasObject = {
-        id: groupId,
-        slideId,
-        type: "group",
-        x: minX,
-        y: minY,
-        width: maxX - minX,
-        height: maxY - minY,
-        rotation: 0,
-        opacity: 1,
-        zIndex: maxZIndex + 1,
-        properties: {
-          childrenIds: objectIds,
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
 
       const slides = state.slideshow.slides.map((s) => {
         if (s.id !== slideId) return s;
 
         const updatedObjects = s.canvasObjects.map((obj) => {
-          if (objectIds.includes(obj.id)) {
+          if (normalizedIds.includes(obj.id)) {
             return { ...obj, groupId };
           }
           return obj;
@@ -275,14 +238,14 @@ export const createDocumentSlice: StateCreator<
 
         return {
           ...s,
-          canvasObjects: [...updatedObjects, groupObject],
+          canvasObjects: updatedObjects,
         };
       });
 
       return {
         slideshow: { ...state.slideshow, slides },
-        selectedObjectId: groupId,
-        selectedObjectIds: [groupId],
+        selectedObjectId: normalizedIds[0] || null,
+        selectedObjectIds: normalizedIds,
         isDirty: true,
       };
     });
@@ -293,24 +256,27 @@ export const createDocumentSlice: StateCreator<
     set((state) => {
       if (!state.slideshow) return state;
 
-      const group = state.slideshow.slides
-        .find((s) => s.id === slideId)
-        ?.canvasObjects.find((o) => o.id === groupId);
+      const slide = state.slideshow.slides.find((s) => s.id === slideId);
+      if (!slide) return state;
 
-      if (!group || group.type !== "group") return state;
+      const legacyGroup = slide.canvasObjects.find((o) => o.id === groupId && o.type === "group");
+      const childrenIds = legacyGroup
+        ? ((legacyGroup.properties as { childrenIds: string[] }).childrenIds ?? [])
+        : slide.canvasObjects.filter((obj) => obj.groupId === groupId).map((obj) => obj.id);
 
-      const childrenIds = (group.properties as { childrenIds: string[] })
-        .childrenIds;
+      if (childrenIds.length === 0) return state;
 
       const slides = state.slideshow.slides.map((s) => {
         if (s.id !== slideId) return s;
 
         const updatedObjects = s.canvasObjects
-          .filter((obj) => obj.id !== groupId)
+          .filter((obj) => obj.id !== groupId || obj.type !== "group")
           .map((obj) => {
             if (childrenIds.includes(obj.id)) {
-              const { groupId: _, ...rest } = obj;
-              return rest;
+              return {
+                ...obj,
+                groupId: undefined,
+              };
             }
             return obj;
           });

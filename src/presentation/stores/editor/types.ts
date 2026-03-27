@@ -10,6 +10,7 @@ export interface ClipboardItem {
 }
 
 export type RightPanel =
+  | "canvas"
   | "properties"
   | "animation"
   | "effects"
@@ -72,6 +73,7 @@ export interface SelectionSlice {
   selectedObjectIds: string[];
   setCurrentSlideIndex: (index: number) => void;
   selectObject: (objectId: string | null) => void;
+  selectObjects: (objectIds: string[]) => void;
   addToSelection: (objectId: string) => void;
   removeFromSelection: (objectId: string) => void;
   clearSelection: () => void;
@@ -82,11 +84,21 @@ export interface WorkspaceSlice {
   activeRightPanel: RightPanel;
   activeBottomSurface: BottomSurface;
   zoom: number;
+  canvasZoom: number;
+  gridEnabled: boolean;
+  snapEnabled: boolean;
+  gridSize: number;
+  snapThreshold: number;
   setActiveLeftTab: (tab: LeftTab) => void;
   setActiveRightPanel: (panel: RightPanel) => void;
   toggleRightPanel: (panel: RightPanel) => void;
   setActiveBottomSurface: (surface: BottomSurface) => void;
   setZoom: (zoom: number) => void;
+  setCanvasZoom: (zoom: number) => void;
+  setGridEnabled: (enabled: boolean) => void;
+  setSnapEnabled: (enabled: boolean) => void;
+  setGridSize: (size: number) => void;
+  setSnapThreshold: (threshold: number) => void;
 }
 
 export interface PlaybackSlice {

@@ -17,6 +17,12 @@ export const createSelectionSlice: StateCreator<
   selectObject: (objectId) =>
     set({ selectedObjectId: objectId, selectedObjectIds: objectId ? [objectId] : [] }),
 
+  selectObjects: (objectIds) =>
+    set({
+      selectedObjectId: objectIds[0] ?? null,
+      selectedObjectIds: Array.from(new Set(objectIds)),
+    }),
+
   addToSelection: (objectId) =>
     set((state) => ({
       selectedObjectId: objectId,

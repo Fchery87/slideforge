@@ -5,7 +5,28 @@ import { useEditorStore } from "@/presentation/stores/editor-store";
 import { Button } from "@/components/ui/button";
 import { Maximize2, Play, Pause, SkipBack, SkipForward, X } from "lucide-react";
 import { Resolutions } from "@/domain/slideshow/value-objects/resolution";
-import { SlideRenderer } from "@/presentation/components/shared/slide-renderer";
+import { getTotalDurationFrames } from "@/domain/slideshow/entities/slideshow";
+import { RemotionPreview } from "./remotion-preview";
+import { PreviewControls } from "./preview-controls";
+
+function getSlideStartFrame(slideshow: NonNullable<ReturnType<typeof useEditorStore.getState>["slideshow"]>, slideIndex: number) {
+  let frame = 0;
+
+  for (let index = 0; index < slideIndex; index++) {
+    frame += slideshow.slides[index].durationFrames;
+    const transition = slideshow.transitions.find(
+      (item) =>
+        item.fromSlideId === slideshow.slides[index].id &&
+        item.toSlideId === slideshow.slides[index + 1]?.id
+    );
+
+    if (transition) {
+      frame -= transition.durationFrames;
+    }
+  }
+
+  return frame;
+}
 
 export function PreviewModal() {
   const {
@@ -16,6 +37,8 @@ export function PreviewModal() {
     isPlaying,
     setPlaying,
     setPreviewMode,
+    currentFrame,
+    setCurrentFrame,
   } = useEditorStore();
 
   const closePreview = useCallback(() => {
@@ -29,15 +52,20 @@ export function PreviewModal() {
 
   const nextSlide = useCallback(() => {
     if (slideshow && currentSlideIndex < slideshow.slides.length - 1) {
-      setCurrentSlideIndex(currentSlideIndex + 1);
+      const nextIndex = currentSlideIndex + 1;
+      setCurrentSlideIndex(nextIndex);
+      setCurrentFrame(getSlideStartFrame(slideshow, nextIndex));
     }
-  }, [slideshow, currentSlideIndex, setCurrentSlideIndex]);
+  }, [slideshow, currentSlideIndex, setCurrentFrame, setCurrentSlideIndex]);
 
   const prevSlide = useCallback(() => {
     if (currentSlideIndex > 0) {
-      setCurrentSlideIndex(currentSlideIndex - 1);
+      const previousIndex = currentSlideIndex - 1;
+      if (!slideshow) return;
+      setCurrentSlideIndex(previousIndex);
+      setCurrentFrame(getSlideStartFrame(slideshow, previousIndex));
     }
-  }, [currentSlideIndex, setCurrentSlideIndex]);
+  }, [currentSlideIndex, setCurrentFrame, setCurrentSlideIndex, slideshow]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -62,28 +90,22 @@ export function PreviewModal() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPreviewMode, closePreview, togglePlay, nextSlide, prevSlide]);
 
-  // Auto-advance slides when playing
   useEffect(() => {
-    if (!isPlaying || !slideshow) return;
+    if (!slideshow) return;
 
-    const currentSlide = slideshow.slides[currentSlideIndex];
-    if (!currentSlide) return;
-
-    const durationMs = (currentSlide.durationFrames / slideshow.fps) * 1000;
-    const timer = setTimeout(() => {
-      if (currentSlideIndex < slideshow.slides.length - 1) {
-        setCurrentSlideIndex(currentSlideIndex + 1);
-      } else {
-        setPlaying(false);
+    for (let index = slideshow.slides.length - 1; index >= 0; index--) {
+      const startFrame = getSlideStartFrame(slideshow, index);
+      if (currentFrame >= startFrame) {
+        if (index !== currentSlideIndex) {
+          setCurrentSlideIndex(index);
+        }
+        break;
       }
-    }, durationMs);
-
-    return () => clearTimeout(timer);
-  }, [isPlaying, currentSlideIndex, slideshow, setCurrentSlideIndex, setPlaying]);
+    }
+  }, [currentFrame, currentSlideIndex, setCurrentSlideIndex, slideshow]);
 
   if (!isPreviewMode || !slideshow) return null;
 
-  const currentSlide = slideshow.slides[currentSlideIndex];
   const resolution = Resolutions[slideshow.resolution] ?? Resolutions["1080p"];
 
   return (
@@ -120,14 +142,7 @@ export function PreviewModal() {
             aspectRatio: `${resolution.width} / ${resolution.height}`,
           }}
         >
-          {currentSlide && (
-            <SlideRenderer
-              slide={currentSlide}
-              fallbackBg={slideshow.backgroundColor}
-              width={resolution.width}
-              height={resolution.height}
-            />
-          )}
+          <RemotionPreview />
         </div>
       </div>
 
@@ -165,6 +180,14 @@ export function PreviewModal() {
         >
           <SkipForward className="h-5 w-5" />
         </Button>
+
+        <span className="ml-2 text-xs text-slate-500">
+          Frame {Math.min(currentFrame, Math.max(getTotalDurationFrames(slideshow) - 1, 0)) + 1}
+        </span>
+      </div>
+
+      <div className="border-t border-white/10 bg-[#080814]">
+        <PreviewControls className="mx-auto max-w-4xl" />
       </div>
     </div>
   );

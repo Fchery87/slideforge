@@ -21,10 +21,11 @@ import { LeftRail } from "@/presentation/components/editor/workspace/left-rail";
 import { NotesPanel } from "@/presentation/components/editor/workspace/notes-panel";
 import { PresenterView } from "@/presentation/components/editor/workspace/presenter-view";
 import { TimelineContainer } from "@/presentation/components/editor/timeline/timeline-container";
+import { GridSettingsPanel } from "@/presentation/components/editor/grid/grid-settings-panel";
 import { ExportDialog } from "@/presentation/components/export/export-dialog";
 import { Resolutions } from "@/domain/slideshow/value-objects/resolution";
 import { EditorFontLoader } from "@/presentation/components/editor/fonts/font-loader";
-import { Loader2, Settings, Sparkles, Palette, Headphones, Wand2, StickyNote } from "lucide-react";
+import { Loader2, Settings, Sparkles, Palette, Headphones, Wand2, StickyNote, Grid3X3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -35,6 +36,7 @@ import {
 import type { BottomSurface, RightPanel } from "@/presentation/stores/editor-store";
 
 const rightPanelItems: { id: RightPanel; icon: typeof Settings; label: string }[] = [
+  { id: "canvas", icon: Grid3X3, label: "Canvas" },
   { id: "properties", icon: Settings, label: "Properties" },
   { id: "animation", icon: Sparkles, label: "Animation" },
   { id: "effects", icon: Wand2, label: "Effects" },
@@ -141,6 +143,16 @@ export default function EditorPage() {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       <ObjectPropertiesPanel />
+                    </div>
+                  </>
+                )}
+                {activeRightPanel === "canvas" && (
+                  <>
+                    <div className="shrink-0 border-b border-white/[0.06] px-4 py-3">
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Canvas</h2>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <GridSettingsPanel />
                     </div>
                   </>
                 )}

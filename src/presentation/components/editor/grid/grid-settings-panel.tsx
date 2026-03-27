@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useMemo } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -9,48 +9,46 @@ import { Input } from "@/components/ui/input";
 import { Grid3X3, Magnet } from "lucide-react";
 
 export function GridSettingsPanel() {
-  const [gridEnabled, setGridEnabled] = useState(false);
-  const [snapEnabled, setSnapEnabled] = useState(true);
-  const [gridSize, setGridSize] = useState(20);
-  const [snapThreshold, setSnapThreshold] = useState(10);
+  const {
+    canvasZoom,
+    setCanvasZoom,
+    gridEnabled,
+    snapEnabled,
+    gridSize,
+    snapThreshold,
+    setGridEnabled,
+    setSnapEnabled,
+    setGridSize,
+    setSnapThreshold,
+  } = useEditorStore();
 
-  const toggleGrid = useCallback(() => {
-    const newValue = !gridEnabled;
-    setGridEnabled(newValue);
-    // Dispatch event to canvas
-    const event = new CustomEvent("toggle-grid", { detail: { enabled: newValue, size: gridSize } });
-    window.dispatchEvent(event);
-  }, [gridEnabled, gridSize]);
-
-  const toggleSnap = useCallback(() => {
-    const newValue = !snapEnabled;
-    setSnapEnabled(newValue);
-    // Dispatch event to canvas
-    const event = new CustomEvent("toggle-snap", { detail: { enabled: newValue, threshold: snapThreshold } });
-    window.dispatchEvent(event);
-  }, [snapEnabled, snapThreshold]);
-
-  useEffect(() => {
-    // Update grid size when it changes
-    if (gridEnabled) {
-      const event = new CustomEvent("toggle-grid", { detail: { enabled: true, size: gridSize } });
-      window.dispatchEvent(event);
-    }
-  }, [gridSize, gridEnabled]);
-
-  useEffect(() => {
-    // Update snap threshold when it changes
-    if (snapEnabled) {
-      const event = new CustomEvent("toggle-snap", { detail: { enabled: true, threshold: snapThreshold } });
-      window.dispatchEvent(event);
-    }
-  }, [snapThreshold, snapEnabled]);
+  const zoomPercent = useMemo(() => `${Math.round(canvasZoom * 100)}%`, [canvasZoom]);
 
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex items-center gap-2">
         <Grid3X3 className="h-4 w-4 text-slate-400" />
-        <h3 className="text-sm font-semibold text-slate-200">Grid & Snapping</h3>
+        <h3 className="text-sm font-semibold text-slate-200">Canvas Settings</h3>
+      </div>
+
+      <Separator className="bg-white/[0.08]" />
+
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <Label className="text-xs text-slate-300">Canvas Zoom</Label>
+          <span className="text-[10px] uppercase tracking-wider text-slate-500">
+            {zoomPercent}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={25}
+          max={200}
+          step={5}
+          value={Math.round(canvasZoom * 100)}
+          onChange={(e) => setCanvasZoom(Number(e.target.value) / 100)}
+          className="w-full accent-rose-500"
+        />
       </div>
 
       <Separator className="bg-white/[0.08]" />
@@ -63,7 +61,7 @@ export function GridSettingsPanel() {
         </div>
         <Switch
           checked={gridEnabled}
-          onCheckedChange={toggleGrid}
+          onCheckedChange={setGridEnabled}
         />
       </div>
 
@@ -93,7 +91,7 @@ export function GridSettingsPanel() {
         </div>
         <Switch
           checked={snapEnabled}
-          onCheckedChange={toggleSnap}
+          onCheckedChange={setSnapEnabled}
         />
       </div>
 
@@ -118,8 +116,8 @@ export function GridSettingsPanel() {
       {/* Help Text */}
       <div className="text-xs text-slate-500">
         <p className="mb-1">• Grid helps with alignment</p>
-        <p className="mb-1">• Snapping auto-aligns objects to grid</p>
-        <p>• Hold Shift to disable snapping temporarily</p>
+        <p className="mb-1">• Snapping auto-aligns objects while dragging</p>
+        <p>• Use zoom to inspect spacing and timing details</p>
       </div>
     </div>
   );

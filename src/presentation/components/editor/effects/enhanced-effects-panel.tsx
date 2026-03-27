@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,15 +13,12 @@ import {
   type KenBurnsEffect,
   type ColorFilter,
   type OverlayEffect,
-  type ParallaxEffect,
   KenBurnsDirection,
   FilterType,
   OverlayType,
-  ParallaxType,
   KEN_BURNS_PRESETS,
   FILTER_PRESETS,
   OVERLAY_PRESETS,
-  PARALLAX_PRESETS,
   createDefaultKenBurnsEffect,
   createDefaultColorFilter,
   createDefaultOverlayEffect,
@@ -36,9 +33,7 @@ import {
   ArrowRightLeft,
   Expand,
   Palette,
-  Sparkles,
   Layers,
-  SlidersHorizontal,
   ZoomIn,
   Play,
   ChevronRight,
@@ -91,17 +86,10 @@ const OVERLAY_TYPES: { value: OverlayType; label: string; icon: string }[] = [
   { value: "confetti", label: "Confetti", icon: "🎉" },
 ];
 
-const PARALLAX_TYPES: { value: ParallaxType; label: string }[] = [
-  { value: "none", label: "None" },
-  { value: "horizontal", label: "Horizontal" },
-  { value: "vertical", label: "Vertical" },
-  { value: "diagonal", label: "Diagonal" },
-  { value: "depth", label: "3D Depth" },
-];
-
 export function EffectsPanel() {
   const { slideshow, currentSlideIndex, setTransition, updateSlide } = useEditorStore();
   const [activeTab, setActiveTab] = useState("transitions");
+  const kenBurnsPreviewRef = useRef<HTMLDivElement>(null);
 
   if (!slideshow) return null;
 
@@ -126,9 +114,11 @@ export function EffectsPanel() {
   const kenBurns = effects.kenBurns || createDefaultKenBurnsEffect();
   const filter = effects.filter || createDefaultColorFilter();
   const overlay = effects.overlay || createDefaultOverlayEffect();
-  const parallax = effects.parallax || createDefaultParallaxEffect();
 
-  async function handleSetTransition(type: TransitionType) {
+  async function handleSetTransition(
+    type: TransitionType,
+    durationFrames = transition?.durationFrames ?? 30
+  ) {
     if (!slideshow || !currentSlide || !nextSlide) return;
 
     const newTransition = {
@@ -137,7 +127,7 @@ export function EffectsPanel() {
       fromSlideId: currentSlide.id,
       toSlideId: nextSlide.id,
       type,
-      durationFrames: 30,
+      durationFrames,
       easing: "ease-in-out",
       createdAt: new Date(),
     };
@@ -183,10 +173,28 @@ export function EffectsPanel() {
     updateSlideEffects({ ...effects, overlay: newOverlay });
   }
 
-  function updateParallax(updates: Partial<ParallaxEffect>) {
-    const newParallax = { ...parallax, ...updates };
-    updateSlideEffects({ ...effects, parallax: newParallax });
-  }
+  const previewKenBurns = () => {
+    const element = kenBurnsPreviewRef.current;
+    if (!element) return;
+
+    element.getAnimations().forEach((instance) => instance.cancel());
+
+    element.animate(
+      [
+        {
+          transform: `translate(${kenBurns.startX}%, ${kenBurns.startY}%) scale(${kenBurns.startScale})`,
+        },
+        {
+          transform: `translate(${kenBurns.endX}%, ${kenBurns.endY}%) scale(${kenBurns.endScale})`,
+        },
+      ],
+      {
+        duration: Math.max((kenBurns.durationFrames / (slideshow?.fps || 30)) * 1000, 250),
+        easing: kenBurns.easing,
+        fill: "both",
+      }
+    );
+  };
 
   return (
     <div>
@@ -266,9 +274,7 @@ export function EffectsPanel() {
                         <div className="flex items-center gap-2">
                           <Slider
                             value={[transition.durationFrames]}
-                            onValueChange={([v]: number[]) =>
-                              handleSetTransition(transition.type)
-                            }
+                            onValueChange={([v]: number[]) => handleSetTransition(transition.type, v)}
                             min={15}
                             max={120}
                             step={15}
@@ -428,15 +434,21 @@ export function EffectsPanel() {
                 </div>
 
                 {/* Preview Button */}
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+                  <Label className="mb-2 block text-[10px] uppercase tracking-wider text-slate-500">
+                    Preview
+                  </Label>
+                  <div className="relative flex h-24 items-center justify-center overflow-hidden rounded-md bg-[#101425]">
+                    <div
+                      ref={kenBurnsPreviewRef}
+                      className="h-16 w-28 rounded-lg bg-gradient-to-br from-sky-400 via-indigo-500 to-rose-500 shadow-xl"
+                    />
+                  </div>
+                </div>
                 <Button
                   variant="outline"
                   className="w-full border-white/[0.1] text-slate-300 hover:bg-white/[0.04]"
-                  onClick={() => {
-                    const event = new CustomEvent("preview-ken-burns", {
-                      detail: { slideId: currentSlide?.id, kenBurns },
-                    });
-                    window.dispatchEvent(event);
-                  }}
+                  onClick={previewKenBurns}
                 >
                   <Play className="mr-2 h-4 w-4" />
                   Preview Effect
