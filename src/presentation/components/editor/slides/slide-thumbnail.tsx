@@ -11,7 +11,8 @@ interface SlideThumbnailProps {
   slide: Slide;
   index: number;
   isActive: boolean;
-  onClick: () => void;
+  isSelected?: boolean;
+  onClick: (e: React.MouseEvent) => void;
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void;
@@ -93,6 +94,7 @@ export const SlideThumbnail = memo(function SlideThumbnail({
   slide,
   index,
   isActive,
+  isSelected = false,
   onClick,
   onDragStart,
   onDragOver,
@@ -115,6 +117,8 @@ export const SlideThumbnail = memo(function SlideThumbnail({
         "group relative shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 transition-all",
         isActive
           ? "border-rose-500 shadow-[0_0_12px_rgba(225,29,72,0.3)]"
+          : isSelected
+          ? "border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.3)]"
           : "border-white/[0.06] hover:border-white/[0.15]"
       )}
     >
@@ -134,6 +138,8 @@ export const SlideThumbnail = memo(function SlideThumbnail({
           "absolute left-1 top-1 rounded px-1 py-0.5 text-[9px] font-medium",
           isActive
             ? "bg-rose-500/80 text-white"
+            : isSelected
+            ? "bg-amber-500/80 text-white"
             : "bg-black/50 text-slate-400"
         )}
       >
