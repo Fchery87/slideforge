@@ -64,7 +64,13 @@ export interface DocumentSlice {
   updateAudioTrack: (trackId: string, data: Partial<AudioTrack>) => void;
 
   // Slideshow metadata
-  updateSlideshowMeta: (data: Partial<Pick<Slideshow, "title" | "description" | "resolution" | "fps" | "backgroundColor">>) => void;
+  updateSlideshowMeta: (data: Partial<Pick<Slideshow, "title" | "description" | "resolution" | "fps" | "backgroundColor" | "occasionType" | "status" | "aspectRatio" | "coverAssetId">>) => void;
+
+  // Bulk operations
+  bulkSetDuration: (slideIds: string[], durationFrames: number) => void;
+  bulkApplyEffect: (slideIds: string[], effects: Record<string, unknown>) => void;
+  bulkDeleteSlides: (slideIds: string[]) => void;
+  bulkDuplicateSlides: (slideIds: string[]) => void;
 }
 
 export interface SelectionSlice {
@@ -77,6 +83,15 @@ export interface SelectionSlice {
   addToSelection: (objectId: string) => void;
   removeFromSelection: (objectId: string) => void;
   clearSelection: () => void;
+
+  // Slide multi-select
+  selectedSlideIds: string[];
+  selectSlide: (slideId: string) => void;
+  selectSlides: (slideIds: string[]) => void;
+  addSlideToSelection: (slideId: string) => void;
+  removeSlideFromSelection: (slideId: string) => void;
+  selectAllSlides: () => void;
+  clearSlideSelection: () => void;
 }
 
 export interface WorkspaceSlice {

@@ -39,4 +39,21 @@ export const createSelectionSlice: StateCreator<
     })),
 
   clearSelection: () => set({ selectedObjectId: null, selectedObjectIds: [] }),
+
+  // Slide multi-select
+  selectedSlideIds: [],
+  selectSlide: (slideId) => set({ selectedSlideIds: [slideId] }),
+  selectSlides: (slideIds) => set({ selectedSlideIds: slideIds }),
+  addSlideToSelection: (slideId) => set((state) => ({
+    selectedSlideIds: state.selectedSlideIds.includes(slideId)
+      ? state.selectedSlideIds
+      : [...state.selectedSlideIds, slideId],
+  })),
+  removeSlideFromSelection: (slideId) => set((state) => ({
+    selectedSlideIds: state.selectedSlideIds.filter((id) => id !== slideId),
+  })),
+  selectAllSlides: () => set((state) => ({
+    selectedSlideIds: state.slideshow?.slides.map((s) => s.id) ?? [],
+  })),
+  clearSlideSelection: () => set({ selectedSlideIds: [] }),
 });
