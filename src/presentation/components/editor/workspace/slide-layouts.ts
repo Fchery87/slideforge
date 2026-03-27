@@ -3,6 +3,7 @@ import type {
   ShapeProperties,
   TextProperties,
 } from "@/domain/slideshow/entities/canvas-object";
+import type { AspectRatio } from "@/domain/slideshow/entities/slideshow";
 
 export type SlideLayoutId =
   | "title"
@@ -10,6 +11,29 @@ export type SlideLayoutId =
   | "two-column"
   | "full-image"
   | "blank";
+
+// Canvas dimensions per aspect ratio
+export const CANVAS_DIMENSIONS: Record<AspectRatio, { width: number; height: number }> = {
+  "16:9": { width: 960, height: 540 },
+  "9:16": { width: 540, height: 960 },
+  "4:3": { width: 960, height: 720 },
+  "1:1": { width: 720, height: 720 },
+};
+
+// Layouts that work well with each aspect ratio
+export const LAYOUT_ASPECT_COMPATIBILITY: Record<SlideLayoutId, AspectRatio[]> = {
+  "title": ["16:9", "9:16", "4:3", "1:1"],
+  "title-content": ["16:9", "4:3"],
+  "two-column": ["16:9", "4:3"],
+  "full-image": ["16:9", "9:16", "4:3", "1:1"],
+  "blank": ["16:9", "9:16", "4:3", "1:1"],
+};
+
+export function getCompatibleLayouts(aspectRatio: AspectRatio): SlideLayoutId[] {
+  return (Object.keys(LAYOUT_ASPECT_COMPATIBILITY) as SlideLayoutId[]).filter(
+    (layoutId) => LAYOUT_ASPECT_COMPATIBILITY[layoutId].includes(aspectRatio)
+  );
+}
 
 const DEFAULT_TEXT_COLOR = "#F8FAFC";
 const DEFAULT_MUTED_COLOR = "#CBD5E1";
@@ -47,6 +71,8 @@ function createTextObject(
       textAlign,
       lineHeight: 1.2,
     } satisfies TextProperties,
+    sourceAssetId: null,
+    animation: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -79,6 +105,8 @@ function createShapeObject(
       stroke: "transparent",
       strokeWidth: 0,
     } satisfies ShapeProperties,
+    sourceAssetId: null,
+    animation: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
