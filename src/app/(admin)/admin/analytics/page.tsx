@@ -21,6 +21,7 @@ interface AnalyticsData {
   totalExports: number;
   activeUsers: number;
   storageUsedBytes: number;
+  occasionDistribution: { occasionType: string; count: number }[];
 }
 
 export default function AdminAnalyticsPage() {
@@ -146,6 +147,38 @@ export default function AdminAnalyticsPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Occasion Type Distribution */}
+      {analytics?.occasionDistribution && analytics.occasionDistribution.length > 0 && (
+        <Card className="border-white/[0.08] bg-[#16163a] p-5">
+          <h3 className="text-sm font-medium text-slate-300">Slideshow Creation by Occasion Type</h3>
+          <p className="mt-1 text-xs text-slate-500">Distribution of slideshows by their occasion type</p>
+          <div className="mt-4 space-y-3">
+            {analytics.occasionDistribution.map((row) => {
+              const maxCount = Math.max(...analytics.occasionDistribution.map((r) => r.count));
+              const percentage = maxCount > 0 ? (row.count / maxCount) * 100 : 0;
+              return (
+                <div key={row.occasionType} className="flex items-center gap-3">
+                  <div className="w-24 shrink-0 text-xs capitalize text-slate-400">
+                    {row.occasionType?.replace("_", " ") || "Unknown"}
+                  </div>
+                  <div className="flex-1">
+                    <div className="h-6 overflow-hidden rounded bg-white/[0.03]">
+                      <div
+                        className="h-full rounded bg-gradient-to-r from-rose-500/40 to-purple-500/40 transition-all"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="w-12 shrink-0 text-right text-xs font-medium text-slate-300">
+                    {row.count}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
       )}
     </div>
   );
