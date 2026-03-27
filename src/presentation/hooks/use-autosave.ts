@@ -13,6 +13,10 @@ export async function persistSlideshow(slideshow: Slideshow) {
     body: JSON.stringify({
       title: slideshow.title,
       description: slideshow.description,
+      occasionType: slideshow.occasionType,
+      status: slideshow.status,
+      aspectRatio: slideshow.aspectRatio,
+      coverAssetId: slideshow.coverAssetId,
       resolution: slideshow.resolution,
       fps: slideshow.fps,
       backgroundColor: slideshow.backgroundColor,
