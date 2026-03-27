@@ -1,6 +1,7 @@
 import type { IMediaAssetRepository } from "@/domain/media/repositories/media-asset-repository.interface";
 import type { MediaAsset } from "@/domain/media/entities/media-asset";
 import { createStorageKey } from "@/domain/media/value-objects/storage-key";
+import { getPublicUrl } from "@/infrastructure/storage/r2-storage-service";
 import { nanoid } from "nanoid";
 
 export interface UploadMediaInput {
@@ -9,6 +10,7 @@ export interface UploadMediaInput {
   mimeType: string;
   sizeBytes: number;
   type: "image" | "audio";
+  storageKey?: string;
   width?: number;
   height?: number;
   durationMs?: number;
@@ -20,7 +22,7 @@ export class UploadMediaCommand {
 
   async execute(input: UploadMediaInput): Promise<MediaAsset> {
     const id = nanoid();
-    const storageKey = createStorageKey(input.userId, input.fileName);
+    const storageKey = input.storageKey ?? createStorageKey(input.userId, input.fileName);
 
     const asset: MediaAsset = {
       id,
@@ -30,7 +32,7 @@ export class UploadMediaCommand {
       mimeType: input.mimeType,
       sizeBytes: input.sizeBytes,
       storageKey,
-      url: storageKey,
+      url: getPublicUrl(storageKey),
       width: input.width ?? null,
       height: input.height ?? null,
       durationMs: input.durationMs ?? null,

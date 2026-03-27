@@ -22,15 +22,20 @@ export function MediaUploadZone() {
 
       try {
         const presignRes = await fetch(
-          `/api/media/presign?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`
+          `/api/media/presign?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`,
+          { credentials: "include" }
         );
         if (!presignRes.ok) throw new Error("Failed to get presigned URL");
         const { presignedUrl, storageKey } = await presignRes.json();
 
-        const uploadRes = await fetch(presignedUrl, {
-          method: "PUT",
-          body: file,
-          headers: { "Content-Type": file.type },
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", file);
+        uploadFormData.append("storageKey", storageKey);
+        
+        const uploadRes = await fetch("/api/media/upload", {
+          method: "POST",
+          credentials: "include",
+          body: uploadFormData,
         });
         if (!uploadRes.ok) throw new Error("Upload failed");
 
@@ -42,6 +47,7 @@ export function MediaUploadZone() {
 
         const confirmRes = await fetch("/api/media", {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             fileName: file.name,

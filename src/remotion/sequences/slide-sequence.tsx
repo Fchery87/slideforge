@@ -5,6 +5,7 @@ import { ImageSequence } from "./image-sequence";
 import { TextSequence } from "./text-sequence";
 import { KenBurnsContainer, FilterContainer, OverlayContainer, ParallaxContainer } from "../effects";
 import { createDefaultSlideEffects } from "@/domain/slideshow/value-objects/slide-effects";
+import { resolveBackgroundToCss } from "@/domain/slideshow/value-objects/slide-background";
 
 type SlideSequenceProps = {
   slide: Slide;
@@ -96,7 +97,7 @@ export function SlideSequence({ slide }: SlideSequenceProps) {
   const slideContent = (
     <AbsoluteFill
       style={{
-        backgroundColor: slide.backgroundColor ?? "#000000",
+        backgroundColor: resolveBackgroundToCss(slide.background, "#000000"),
       }}
     >
       {sortedObjects.map(renderCanvasObject)}

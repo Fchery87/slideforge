@@ -13,6 +13,7 @@ import {
   Check,
   Trash2
 } from "lucide-react";
+import { resolveBackgroundToCss, createSolidBackground, createGradientBackground, type SlideBackground } from "@/domain/slideshow/value-objects/slide-background";
 
 const PRESET_GRADIENTS = [
   { name: "Sunset", css: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
@@ -35,6 +36,13 @@ const PRESET_COLORS = [
   "#000000",
 ];
 
+function getBackgroundValue(bg: SlideBackground | undefined): string | null {
+  if (!bg) return null;
+  if (bg.kind === "solid") return bg.color;
+  if (bg.kind === "gradient") return bg.value;
+  return null;
+}
+
 export function BackgroundPanel() {
   const {
     slideshow,
@@ -47,25 +55,26 @@ export function BackgroundPanel() {
   const setSolidColor = useCallback((color: string) => {
     if (!currentSlide) return;
     updateSlide(currentSlideIndex, {
-      backgroundColor: color,
+      background: createSolidBackground(color),
     });
   }, [currentSlide, currentSlideIndex, updateSlide]);
 
   const setGradient = useCallback((gradient: string) => {
     if (!currentSlide) return;
     updateSlide(currentSlideIndex, {
-      backgroundColor: gradient,
+      background: createGradientBackground(gradient),
     });
   }, [currentSlide, currentSlideIndex, updateSlide]);
 
   const clearBackground = useCallback(() => {
     if (!currentSlide) return;
     updateSlide(currentSlideIndex, {
-      backgroundColor: null,
+      background: { kind: "theme-default" },
     });
   }, [currentSlide, currentSlideIndex, updateSlide]);
 
-  const currentBg = currentSlide?.backgroundColor;
+  const currentBg = getBackgroundValue(currentSlide?.background);
+  const resolvedBg = resolveBackgroundToCss(currentSlide?.background, slideshow?.backgroundColor ?? "#1a1a2e");
 
   if (!currentSlide) {
     return (
@@ -94,10 +103,10 @@ export function BackgroundPanel() {
         <div
           className="h-24 w-full rounded-lg border border-white/10"
           style={{
-            background: currentBg || slideshow?.backgroundColor || "#1a1a2e",
+            background: resolvedBg,
           }}
         />
-        {(currentBg || slideshow?.backgroundColor) && (
+        {currentSlide.background.kind !== "theme-default" && (
           <Button
             variant="ghost"
             size="sm"

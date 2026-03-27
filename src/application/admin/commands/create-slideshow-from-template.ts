@@ -3,6 +3,7 @@ import type { ISlideshowRepository } from "@/domain/slideshow/repositories/slide
 import type { Slideshow } from "@/domain/slideshow/entities/slideshow";
 import type { CanvasObjectProperties } from "@/domain/slideshow/entities/canvas-object";
 import type { TransitionType } from "@/domain/slideshow/value-objects/transition-type";
+import { migrateLegacyBackgroundColor } from "@/domain/slideshow/value-objects/slide-background";
 import { nanoid } from "nanoid";
 
 export class CreateSlideshowFromTemplateCommand {
@@ -72,7 +73,7 @@ export class CreateSlideshowFromTemplateCommand {
         slideshowId: newId,
         order: i,
         durationFrames: slideData?.durationFrames ?? 150,
-        backgroundColor: slideData?.backgroundColor ?? null,
+        background: migrateLegacyBackgroundColor(slideData?.backgroundColor),
         createdAt: now,
         updatedAt: now,
       });

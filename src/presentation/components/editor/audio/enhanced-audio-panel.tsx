@@ -35,49 +35,50 @@ export function EnhancedAudioPanel() {
       .catch(() => {});
   }, []);
 
-  // Generate waveform data when tracks are added
-  useEffect(() => {
-    if (!slideshow) return;
-    
-    slideshow.audioTracks.forEach((track) => {
-      if (!waveforms[track.id]) {
-        generateWaveform(track.mediaAssetId, track.id);
-      }
-    });
-  }, [slideshow?.audioTracks]);
-
-  const generateWaveform = async (mediaAssetId: string, trackId: string) => {
-    try {
-      const response = await fetch(`/api/media/${mediaAssetId}/waveform`);
-      if (response.ok) {
-        const data = await response.json();
-        setWaveforms((prev) => ({ ...prev, [trackId]: data }));
-      }
-    } catch {
-      // Fallback: generate simple waveform from audio
-      generateSimpleWaveform(mediaAssetId, trackId);
-    }
-  };
-
-  const generateSimpleWaveform = async (mediaAssetId: string, trackId: string) => {
+  const generateSimpleWaveform = useCallback(async (mediaAssetId: string, trackId: string) => {
     try {
       const audio = new Audio(`/api/media/${mediaAssetId}/file`);
       audio.crossOrigin = "anonymous";
-      
-      audio.addEventListener("loadedmetadata", () => {
-        // Generate dummy waveform data (100 bars)
+
+      const handleLoaded = () => {
         const peaks = Array.from({ length: 100 }, () => Math.random() * 0.8 + 0.2);
         setWaveforms((prev) => ({
           ...prev,
           [trackId]: { peaks, duration: audio.duration },
         }));
-      });
-      
+        audio.removeEventListener("loadedmetadata", handleLoaded);
+      };
+      audio.addEventListener("loadedmetadata", handleLoaded);
       audio.load();
     } catch {
       // Silent fail
     }
-  };
+  }, []);
+
+  const generateWaveform = useCallback(async (mediaAssetId: string, trackId: string) => {
+    try {
+      const response = await fetch(`/api/media/${mediaAssetId}/waveform`);
+      if (response.ok) {
+        const data = await response.json();
+        setWaveforms((prev) => ({ ...prev, [trackId]: data }));
+      } else {
+        generateSimpleWaveform(mediaAssetId, trackId);
+      }
+    } catch {
+      generateSimpleWaveform(mediaAssetId, trackId);
+    }
+  }, [generateSimpleWaveform]);
+
+  // Generate waveform data when tracks are added
+  useEffect(() => {
+    if (!slideshow) return;
+
+    slideshow.audioTracks.forEach((track) => {
+      if (!waveforms[track.id]) {
+        generateWaveform(track.mediaAssetId, track.id);
+      }
+    });
+  }, [slideshow, waveforms, generateWaveform]);
 
   if (!slideshow) return null;
 
@@ -157,31 +158,30 @@ export function EnhancedAudioPanel() {
   const updateTrackTrim = async (trackId: string, field: 'startFrame' | 'endFrame', value: number) => {
     const track = slideshow.audioTracks.find((t) => t.id === trackId);
     if (!track) return;
-    
-    const updatedTrack = { ...track, [field]: value };
-    
+
+    updateAudioTrack(trackId, { [field]: value });
+
     await fetch(`/api/slideshows/${slideshowId}/audio/${trackId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedTrack),
+      body: JSON.stringify({ ...track, [field]: value }),
     });
   };
 
   const updateTrackVolume = async (trackId: string, volume: number) => {
     const track = slideshow.audioTracks.find((t) => t.id === trackId);
     if (!track) return;
-    
-    const updatedTrack = { ...track, volume };
-    
-    // Update playing audio volume
+
+    updateAudioTrack(trackId, { volume });
+
     if (audioRefs.current[trackId]) {
       audioRefs.current[trackId].volume = volume / 100;
     }
-    
+
     await fetch(`/api/slideshows/${slideshowId}/audio/${trackId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedTrack),
+      body: JSON.stringify({ ...track, volume }),
     });
   };
 
@@ -344,6 +344,7 @@ export function EnhancedAudioPanel() {
                           value={track.fadeInFrames}
                           onChange={(e) => {
                             const frames = Number(e.target.value);
+                            updateAudioTrack(track.id, { fadeInFrames: frames });
                             fetch(`/api/slideshows/${slideshowId}/audio/${track.id}`, {
                               method: "PUT",
                               headers: { "Content-Type": "application/json" },
@@ -361,6 +362,7 @@ export function EnhancedAudioPanel() {
                           value={track.fadeOutFrames}
                           onChange={(e) => {
                             const frames = Number(e.target.value);
+                            updateAudioTrack(track.id, { fadeOutFrames: frames });
                             fetch(`/api/slideshows/${slideshowId}/audio/${track.id}`, {
                               method: "PUT",
                               headers: { "Content-Type": "application/json" },

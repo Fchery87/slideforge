@@ -4,6 +4,7 @@ import { memo } from "react";
 import { cn } from "@/lib/utils";
 import type { Slide } from "@/domain/slideshow/entities/slide";
 import type { CanvasObject } from "@/domain/slideshow/entities/canvas-object";
+import { resolveBackgroundToCss } from "@/domain/slideshow/value-objects/slide-background";
 
 interface SlideThumbnailProps {
   slide: Slide;
@@ -96,7 +97,7 @@ export const SlideThumbnail = memo(function SlideThumbnail({
   onDragOver,
   onDrop,
 }: SlideThumbnailProps) {
-  const bgColor = slide.backgroundColor ?? "#1a1a2e";
+  const bgColor = resolveBackgroundToCss(slide.background, "#1a1a2e");
 
   return (
     <div

@@ -12,6 +12,8 @@ import {
 } from "fabric";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import type { CanvasObject } from "@/domain/slideshow/entities/canvas-object";
+import { resolveBackgroundToCss } from "@/domain/slideshow/value-objects/slide-background";
+import { resolveCanvasImageUrl } from "./media-url";
 
 interface FabricCanvasProps {
   aspectRatio: number;
@@ -95,16 +97,37 @@ async function canvasObjectToFabric(obj: CanvasObject): Promise<FabricObject | n
     case "image": {
       const props = obj.properties as CanvasObject["properties"] & {
         mediaAssetId: string;
+        objectFit?: "cover" | "contain" | "fill";
       };
       try {
+        const imageUrl = await resolveCanvasImageUrl(props.mediaAssetId);
         const img = await FabricImage.fromURL(
-          `/api/media/${props.mediaAssetId}/file`,
+          imageUrl,
           { crossOrigin: "anonymous" }
         );
+        
+        // Calculate scaling based on objectFit
+        const objectFit = props.objectFit || "contain";
+        let scaleX = obj.width / (img.width || 1);
+        let scaleY = obj.height / (img.height || 1);
+        
+        if (objectFit === "contain") {
+          // Scale uniformly to fit within bounds
+          const uniformScale = Math.min(scaleX, scaleY);
+          scaleX = uniformScale;
+          scaleY = uniformScale;
+        } else if (objectFit === "cover") {
+          // Scale uniformly to cover entire area
+          const uniformScale = Math.max(scaleX, scaleY);
+          scaleX = uniformScale;
+          scaleY = uniformScale;
+        }
+        // "fill" uses the original scaleX and scaleY (stretches to fit)
+        
         img.set({
           ...base,
-          scaleX: obj.width / (img.width || 1),
-          scaleY: obj.height / (img.height || 1),
+          scaleX,
+          scaleY,
         });
         return img;
       } catch {
@@ -142,7 +165,7 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
     syncingRef.current = true;
     canvas.clear();
 
-    const slideBg = currentSlide.backgroundColor ?? state.slideshow?.backgroundColor ?? "#1a1a2e";
+    const slideBg = resolveBackgroundToCss(currentSlide.background, state.slideshow?.backgroundColor ?? "#1a1a2e");
     canvas.backgroundColor = slideBg;
 
     for (const obj of currentSlide.canvasObjects) {
@@ -295,7 +318,7 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
       // Build a lightweight key from the slide data to detect meaningful changes
       const key = JSON.stringify({
         id: currentSlide.id,
-        bg: currentSlide.backgroundColor,
+        bg: currentSlide.background,
         objects: currentSlide.canvasObjects.map((o) => ({
           id: o.id,
           x: o.x,
@@ -383,10 +406,79 @@ export function FabricCanvas({ aspectRatio }: FabricCanvasProps) {
     };
   }, [canvasHeight]);
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const raw = e.dataTransfer.getData("application/slideforge-media");
+      if (!raw) return;
+
+      try {
+        const asset = JSON.parse(raw);
+        const store = storeRef.current;
+        const currentSlide = store.slideshow?.slides[store.currentSlideIndex];
+        if (!currentSlide || asset.type !== "image") return;
+
+        const id = crypto.randomUUID();
+        const CANVAS_WIDTH = 960;
+        const CANVAS_HEIGHT = 540;
+        const PADDING = 80;
+        
+        // Get asset dimensions or use defaults
+        const assetWidth = asset.width ?? 800;
+        const assetHeight = asset.height ?? 600;
+        
+        // Calculate scale to fit within canvas with padding
+        const maxWidth = CANVAS_WIDTH - (PADDING * 2);
+        const maxHeight = CANVAS_HEIGHT - (PADDING * 2);
+        const scale = Math.min(
+          maxWidth / assetWidth,
+          maxHeight / assetHeight,
+          1
+        );
+        
+        const width = Math.round(assetWidth * scale);
+        const height = Math.round(assetHeight * scale);
+        
+        // Center on canvas
+        const x = Math.round((CANVAS_WIDTH - width) / 2);
+        const y = Math.round((CANVAS_HEIGHT - height) / 2);
+        
+        store.addObject(currentSlide.id, {
+          id,
+          slideId: currentSlide.id,
+          type: "image",
+          x,
+          y,
+          width,
+          height,
+          rotation: 0,
+          opacity: 1,
+          zIndex: currentSlide.canvasObjects.length + 1,
+          properties: {
+            mediaAssetId: asset.id,
+            objectFit: "contain",
+          },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } catch {
+        // Invalid drag data
+      }
+    },
+    []
+  );
+
   return (
     <div
       ref={containerRef}
       className="flex h-full w-full items-center justify-center overflow-hidden"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <div data-canvas-sizer className="relative rounded-lg shadow-2xl ring-1 ring-white/[0.06]">
         <canvas ref={canvasRef} />

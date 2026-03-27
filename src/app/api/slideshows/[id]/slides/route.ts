@@ -4,6 +4,7 @@ import { AddSlideCommand } from "@/application/slideshow/commands/add-slide";
 import { ReorderSlidesCommand } from "@/application/slideshow/commands/reorder-slides";
 import { RemoveSlideCommand } from "@/application/slideshow/commands/remove-slide";
 import { DrizzleSlideshowRepository } from "@/infrastructure/repositories/drizzle-slideshow-repository";
+import { migrateLegacyBackgroundColor } from "@/domain/slideshow/value-objects/slide-background";
 
 const slideshowRepo = new DrizzleSlideshowRepository();
 
@@ -22,7 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     slideshowId: id,
     order: body.order ?? existing.slides.length,
     durationFrames: body.durationFrames,
-    backgroundColor: body.backgroundColor,
+    background: body.background ?? migrateLegacyBackgroundColor(body.backgroundColor),
   });
 
   return NextResponse.json(slide, { status: 201 });

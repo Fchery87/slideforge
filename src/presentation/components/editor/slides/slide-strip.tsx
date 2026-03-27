@@ -4,9 +4,10 @@ import { useCallback, useRef } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { SlideThumbnail } from "./slide-thumbnail";
 import { Button } from "@/components/ui/button";
-import { Plus, Copy } from "lucide-react";
+import { Plus, Copy, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import type { Slide } from "@/domain/slideshow/entities/slide";
+import { migrateLegacyBackgroundColor } from "@/domain/slideshow/value-objects/slide-background";
 
 export function SlideStrip() {
   const {
@@ -16,6 +17,7 @@ export function SlideStrip() {
     addSlide,
     reorderSlides,
     duplicateSlide,
+    removeSlide,
   } = useEditorStore();
 
   const dragIndexRef = useRef<number | null>(null);
@@ -28,7 +30,7 @@ export function SlideStrip() {
       slideshowId: slideshow.id,
       order,
       durationFrames: slideshow.fps * 5,
-      backgroundColor: null,
+      background: migrateLegacyBackgroundColor(null),
       canvasObjects: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -94,6 +96,22 @@ export function SlideStrip() {
           >
             <Copy className="mr-1 h-3.5 w-3.5" />
             Duplicate
+          </Button>
+        )}
+        {slideshow.slides.length > 1 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const currentSlide = slideshow.slides[currentSlideIndex];
+              if (currentSlide && window.confirm("Delete this slide?")) {
+                removeSlide(currentSlide.id);
+              }
+            }}
+            className="shrink-0 border-dashed border-red-500/30 bg-transparent text-red-300 hover:border-red-400 hover:text-red-200"
+          >
+            <Trash2 className="mr-1 h-3.5 w-3.5" />
+            Delete Slide
           </Button>
         )}
       </div>

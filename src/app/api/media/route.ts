@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     mimeType: body.mimeType,
     sizeBytes: body.sizeBytes,
     type: body.type,
+    storageKey: body.storageKey,
     width: body.width,
     height: body.height,
     durationMs: body.durationMs,

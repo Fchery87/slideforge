@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { RemoveSlideCommand } from "@/application/slideshow/commands/remove-slide";
 import { DrizzleSlideshowRepository } from "@/infrastructure/repositories/drizzle-slideshow-repository";
+import { migrateLegacyBackgroundColor } from "@/domain/slideshow/value-objects/slide-background";
 
 const slideshowRepo = new DrizzleSlideshowRepository();
 
@@ -18,8 +19,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   
   const updatedSlide = await slideshowRepo.updateSlide(slideId, {
     durationFrames: body.durationFrames,
-    backgroundColor: body.backgroundColor,
+    background: body.background ?? (body.backgroundColor !== undefined ? migrateLegacyBackgroundColor(body.backgroundColor) : undefined),
     effects: body.effects,
+    notes: body.notes,
+    layoutId: body.layoutId,
   });
 
   return NextResponse.json(updatedSlide);

@@ -13,6 +13,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { usePresignedUrls } from "@/presentation/hooks/use-presigned-urls";
 import type { MediaAsset } from "@/domain/media/entities/media-asset";
 
 type FilterType = "all" | "image" | "audio";
@@ -23,6 +24,7 @@ export function MediaLibrary() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { urls: presignedUrls } = usePresignedUrls(assets);
 
   const fetchAssets = useCallback(async () => {
     try {
@@ -133,11 +135,17 @@ export function MediaLibrary() {
             >
               <div className="relative aspect-square w-full overflow-hidden bg-[#0F0F23]">
                 {asset.type === "image" ? (
-                  <img
-                    src={asset.url}
-                    alt={asset.fileName}
-                    className="h-full w-full object-cover"
-                  />
+                  presignedUrls[asset.id] ? (
+                    <img
+                      src={presignedUrls[asset.id]}
+                      alt={asset.fileName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+                    </div>
+                  )
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
                     <Music className="h-10 w-10 text-slate-600" />

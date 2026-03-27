@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
+import { usePresignedUrls } from "@/presentation/hooks/use-presigned-urls";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,8 @@ export function EnhancedMediaBrowser({ type }: MediaBrowserProps) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showTagFilter, setShowTagFilter] = useState(false);
   
-  const { slideshow, currentSlideIndex, addObject } = useEditorStore();
+  const { slideshow, currentSlideIndex, addObject, selectObject } = useEditorStore();
+  const { urls: presignedUrls } = usePresignedUrls(filteredAssets);
 
   const currentSlide = slideshow?.slides[currentSlideIndex] ?? null;
 
@@ -160,12 +162,14 @@ export function EnhancedMediaBrowser({ type }: MediaBrowserProps) {
         zIndex: currentSlide.canvasObjects.length + 1,
         properties: {
           mediaAssetId: asset.id,
+          objectFit: "contain",
         },
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+      selectObject(id);
     },
-    [currentSlide, type, addObject]
+    [currentSlide, type, addObject, selectObject]
   );
 
   if (loading) {
@@ -294,12 +298,18 @@ export function EnhancedMediaBrowser({ type }: MediaBrowserProps) {
                   "cursor-grab hover:border-white/[0.15] active:cursor-grabbing"
                 )}
               >
-                <img
-                  src={asset.url}
-                  alt={asset.fileName}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
+                {presignedUrls[asset.id] ? (
+                  <img
+                    src={presignedUrls[asset.id]}
+                    alt={asset.fileName}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-white/[0.02]">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                  </div>
+                )}
                 <div className="absolute inset-x-0 bottom-0 bg-black/60 px-1.5 py-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <div className="truncate text-[10px] text-slate-300">
                     {asset.fileName}

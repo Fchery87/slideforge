@@ -28,6 +28,7 @@ export interface AnimationConfig {
 
 export interface ImageProperties {
   mediaAssetId: string;
+  objectFit?: "cover" | "contain" | "fill";
   cropRect?: { x: number; y: number; width: number; height: number };
   filters?: Record<string, number>;
   animation?: AnimationConfig;

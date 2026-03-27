@@ -3,21 +3,28 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useEditorStore } from "@/presentation/stores/editor-store";
+import { useAutosave } from "@/presentation/hooks/use-autosave";
+import { useUnsavedChanges } from "@/presentation/hooks/use-unsaved-changes";
+import { useKeyboardShortcuts } from "@/presentation/hooks/use-keyboard-shortcuts";
 import { EditorTopBar } from "@/presentation/components/editor/top-bar/editor-top-bar";
 import { FabricCanvas } from "@/presentation/components/editor/canvas/fabric-canvas";
 import { CanvasToolbar } from "@/presentation/components/editor/canvas/canvas-toolbar";
 import { ObjectPropertiesPanel } from "@/presentation/components/editor/canvas/object-properties-panel";
 import { SlideStrip } from "@/presentation/components/editor/slides/slide-strip";
-import { MediaBrowser } from "@/presentation/components/editor/media-sidebar/enhanced-media-browser";
-import { MediaUploadZone } from "@/presentation/components/editor/media-sidebar/media-upload-zone";
 import { EnhancedAudioPanel } from "@/presentation/components/editor/audio/enhanced-audio-panel";
 import { AnimationPanel } from "@/presentation/components/editor/animation/animation-panel";
 import { BackgroundPanel } from "@/presentation/components/editor/background/background-panel";
 import { EffectsPanel } from "@/presentation/components/editor/effects/enhanced-effects-panel";
 import { PreviewModal } from "@/presentation/components/editor/preview/preview-modal";
 import { ContextMenu, useContextMenu } from "@/presentation/components/editor/context-menu/context-menu";
+import { LeftRail } from "@/presentation/components/editor/workspace/left-rail";
+import { NotesPanel } from "@/presentation/components/editor/workspace/notes-panel";
+import { PresenterView } from "@/presentation/components/editor/workspace/presenter-view";
+import { TimelineContainer } from "@/presentation/components/editor/timeline/timeline-container";
+import { ExportDialog } from "@/presentation/components/export/export-dialog";
 import { Resolutions } from "@/domain/slideshow/value-objects/resolution";
-import { Loader2, Image, Music, Settings, Sparkles, Palette, Headphones, Wand2 } from "lucide-react";
+import { EditorFontLoader } from "@/presentation/components/editor/fonts/font-loader";
+import { Loader2, Settings, Sparkles, Palette, Headphones, Wand2, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -25,9 +32,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-type RightPanel = "properties" | "animation" | "effects" | "background" | "audio" | null;
+import type { BottomSurface, RightPanel } from "@/presentation/stores/editor-store";
 
 const rightPanelItems: { id: RightPanel; icon: typeof Settings; label: string }[] = [
   { id: "properties", icon: Settings, label: "Properties" },
@@ -35,20 +40,33 @@ const rightPanelItems: { id: RightPanel; icon: typeof Settings; label: string }[
   { id: "effects", icon: Wand2, label: "Effects" },
   { id: "background", icon: Palette, label: "Background" },
   { id: "audio", icon: Headphones, label: "Audio" },
+  { id: "notes", icon: StickyNote, label: "Notes" },
+];
+
+const bottomSurfaceItems: { id: BottomSurface; label: string }[] = [
+  { id: "timeline", label: "Timeline" },
+  { id: "filmstrip", label: "Filmstrip" },
 ];
 
 export default function EditorPage() {
   const params = useParams();
   const id = params.id as string;
-  const { slideshow, setSlideshow } = useEditorStore();
+  const {
+    slideshow,
+    setSlideshow,
+    activeRightPanel,
+    toggleRightPanel,
+    activeBottomSurface,
+    setActiveBottomSurface,
+  } = useEditorStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeRightPanel, setActiveRightPanel] = useState<RightPanel>("properties");
   const { contextMenu, handleContextMenu, closeContextMenu } = useContextMenu();
 
-  const toggleRightPanel = (panel: RightPanel) => {
-    setActiveRightPanel((prev) => (prev === panel ? null : panel));
-  };
+  // Autosave and unsaved changes protection
+  useAutosave();
+  useUnsavedChanges();
+  useKeyboardShortcuts();
 
   useEffect(() => {
     async function loadSlideshow() {
@@ -87,34 +105,13 @@ export default function EditorPage() {
 
   return (
     <TooltipProvider delayDuration={200}>
+      <EditorFontLoader />
       <div className="flex h-screen flex-col bg-[#0F0F23]">
         <EditorTopBar />
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Left Sidebar - Media */}
-          <aside className="flex w-[272px] shrink-0 flex-col border-r border-white/[0.06] bg-[#0a0a1a]">
-            <Tabs defaultValue="images" className="flex flex-1 flex-col">
-              <TabsList className="mx-3 mt-3 mb-1">
-                <TabsTrigger value="images" className="flex items-center gap-1.5 text-xs">
-                  <Image className="h-3.5 w-3.5" />
-                  Images
-                </TabsTrigger>
-                <TabsTrigger value="audio" className="flex items-center gap-1.5 text-xs">
-                  <Music className="h-3.5 w-3.5" />
-                  Audio
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="images" className="flex-1 overflow-y-auto px-3 pb-3">
-                <MediaBrowser type="image" />
-              </TabsContent>
-              <TabsContent value="audio" className="flex-1 overflow-y-auto px-3 pb-3">
-                <MediaBrowser type="audio" />
-              </TabsContent>
-            </Tabs>
-            <div className="border-t border-white/[0.06] p-3">
-              <MediaUploadZone />
-            </div>
-          </aside>
+          {/* Left Rail - Authoring tabs */}
+          <LeftRail />
 
           {/* Center - Canvas */}
           <main
@@ -187,6 +184,11 @@ export default function EditorPage() {
                     </div>
                   </>
                 )}
+                {activeRightPanel === "notes" && (
+                  <div className="flex-1 overflow-y-auto">
+                    <NotesPanel />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -217,12 +219,41 @@ export default function EditorPage() {
         </div>
 
         {/* Bottom - Slide Strip / Timeline */}
-        <div className="h-32 shrink-0 border-t border-white/[0.06] bg-[#0a0a1a]">
-          <SlideStrip />
+        <div className="flex h-32 shrink-0 flex-col border-t border-white/[0.06] bg-[#0a0a1a]">
+          <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-3 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Sequence
+            </span>
+            <div className="flex items-center gap-1 rounded-lg bg-white/[0.03] p-1">
+              {bottomSurfaceItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveBottomSurface(item.id)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-[11px] transition-colors",
+                    activeBottomSurface === item.id
+                      ? "bg-white/[0.1] text-slate-100"
+                      : "text-slate-500 hover:text-slate-300"
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="min-h-0 flex-1">
+            {activeBottomSurface === "timeline" ? <TimelineContainer /> : <SlideStrip />}
+          </div>
         </div>
 
         {/* Preview Modal */}
         <PreviewModal />
+
+        {/* Presenter View */}
+        <PresenterView />
+
+        {/* Export Dialog */}
+        <ExportDialog />
 
         {/* Context Menu */}
         {contextMenu && (

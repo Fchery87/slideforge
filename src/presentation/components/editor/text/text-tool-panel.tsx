@@ -7,22 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CanvasObject } from "@/domain/slideshow/entities/canvas-object";
 import { nanoid } from "nanoid";
-
-const FONTS = [
-  "Arial",
-  "Helvetica",
-  "Georgia",
-  "Times New Roman",
-  "Courier New",
-  "Verdana",
-  "Impact",
-  "Comic Sans MS",
-];
+import {
+  EDITOR_FONTS,
+  FONT_CATEGORIES,
+} from "@/presentation/components/editor/fonts/font-config";
 
 export function TextToolPanel() {
   const { slideshow, currentSlideIndex, addObject } = useEditorStore();
   const [text, setText] = useState("Your Text Here");
-  const [fontFamily, setFontFamily] = useState("Arial");
+  const [fontFamily, setFontFamily] = useState("Plus Jakarta Sans");
   const [fontSize, setFontSize] = useState(32);
   const [fontColor, setFontColor] = useState("#ffffff");
 
@@ -45,7 +38,7 @@ export function TextToolPanel() {
       width: 300,
       height: 60,
       rotation: 0,
-      opacity: 100,
+      opacity: 1,
       zIndex: currentSlide.canvasObjects.length,
       properties: {
         content: text,
@@ -87,9 +80,16 @@ export function TextToolPanel() {
           value={fontFamily}
           onChange={(e) => setFontFamily(e.target.value)}
           className="w-full rounded-md border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-sm text-white"
+          style={{ fontFamily }}
         >
-          {FONTS.map((f) => (
-            <option key={f} value={f}>{f}</option>
+          {FONT_CATEGORIES.map((cat) => (
+            <optgroup key={cat.value} label={cat.label}>
+              {EDITOR_FONTS.filter((f) => f.category === cat.value).map((f) => (
+                <option key={f.family} value={f.family} style={{ fontFamily: f.family }}>
+                  {f.family}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </div>

@@ -1,28 +1,31 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useEditorStore } from "@/presentation/stores/editor-store";
 import { Button } from "@/components/ui/button";
-import { Maximize2, Minimize2, Play, Pause, SkipBack, SkipForward, X } from "lucide-react";
+import { Maximize2, Play, Pause, SkipBack, SkipForward, X } from "lucide-react";
+import { Resolutions } from "@/domain/slideshow/value-objects/resolution";
+import { SlideRenderer } from "@/presentation/components/shared/slide-renderer";
 
 export function PreviewModal() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const { slideshow, currentSlideIndex, setCurrentSlideIndex } = useEditorStore();
-
-  const openPreview = useCallback(() => {
-    setIsOpen(true);
-    setIsPlaying(false);
-  }, []);
+  const {
+    slideshow,
+    currentSlideIndex,
+    setCurrentSlideIndex,
+    isPreviewMode,
+    isPlaying,
+    setPlaying,
+    setPreviewMode,
+  } = useEditorStore();
 
   const closePreview = useCallback(() => {
-    setIsOpen(false);
-    setIsPlaying(false);
-  }, []);
+    setPreviewMode(false);
+    setPlaying(false);
+  }, [setPlaying, setPreviewMode]);
 
   const togglePlay = useCallback(() => {
-    setIsPlaying((prev) => !prev);
-  }, []);
+    setPlaying(!isPlaying);
+  }, [isPlaying, setPlaying]);
 
   const nextSlide = useCallback(() => {
     if (slideshow && currentSlideIndex < slideshow.slides.length - 1) {
@@ -37,14 +40,8 @@ export function PreviewModal() {
   }, [currentSlideIndex, setCurrentSlideIndex]);
 
   useEffect(() => {
-    const handleOpenPreview = () => openPreview();
-    window.addEventListener("open-preview-modal", handleOpenPreview);
-    return () => window.removeEventListener("open-preview-modal", handleOpenPreview);
-  }, [openPreview]);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
+      if (!isPreviewMode) return;
       
       if (e.key === "Escape") {
         closePreview();
@@ -63,12 +60,31 @@ export function PreviewModal() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, closePreview, togglePlay, nextSlide, prevSlide]);
+  }, [isPreviewMode, closePreview, togglePlay, nextSlide, prevSlide]);
 
-  if (!isOpen || !slideshow) return null;
+  // Auto-advance slides when playing
+  useEffect(() => {
+    if (!isPlaying || !slideshow) return;
+
+    const currentSlide = slideshow.slides[currentSlideIndex];
+    if (!currentSlide) return;
+
+    const durationMs = (currentSlide.durationFrames / slideshow.fps) * 1000;
+    const timer = setTimeout(() => {
+      if (currentSlideIndex < slideshow.slides.length - 1) {
+        setCurrentSlideIndex(currentSlideIndex + 1);
+      } else {
+        setPlaying(false);
+      }
+    }, durationMs);
+
+    return () => clearTimeout(timer);
+  }, [isPlaying, currentSlideIndex, slideshow, setCurrentSlideIndex, setPlaying]);
+
+  if (!isPreviewMode || !slideshow) return null;
 
   const currentSlide = slideshow.slides[currentSlideIndex];
-  const resolution = slideshow.resolution === "1080p" ? { width: 1920, height: 1080 } : { width: 1280, height: 720 };
+  const resolution = Resolutions[slideshow.resolution] ?? Resolutions["1080p"];
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black">
@@ -104,17 +120,14 @@ export function PreviewModal() {
             aspectRatio: `${resolution.width} / ${resolution.height}`,
           }}
         >
-          {/* Slide Content */}
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{
-              backgroundColor: currentSlide?.backgroundColor || slideshow.backgroundColor || "#1a1a2e",
-            }}
-          >
-            <p className="text-slate-400">
-              Preview placeholder - {currentSlide?.canvasObjects.length || 0} objects
-            </p>
-          </div>
+          {currentSlide && (
+            <SlideRenderer
+              slide={currentSlide}
+              fallbackBg={slideshow.backgroundColor}
+              width={resolution.width}
+              height={resolution.height}
+            />
+          )}
         </div>
       </div>
 
@@ -158,14 +171,13 @@ export function PreviewModal() {
 }
 
 export function PreviewButton() {
+  const setPreviewMode = useEditorStore((state) => state.setPreviewMode);
+
   return (
     <Button
       variant="outline"
       size="sm"
-      onClick={() => {
-        const event = new CustomEvent("open-preview-modal");
-        window.dispatchEvent(event);
-      }}
+      onClick={() => setPreviewMode(true)}
       className="border-white/[0.1] text-slate-300 hover:bg-white/[0.04]"
     >
       <Maximize2 className="mr-1.5 h-3.5 w-3.5" />

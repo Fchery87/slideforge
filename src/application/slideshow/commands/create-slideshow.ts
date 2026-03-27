@@ -1,6 +1,7 @@
 import type { ISlideshowRepository } from "@/domain/slideshow/repositories/slideshow-repository.interface";
 import type { Slideshow } from "@/domain/slideshow/entities/slideshow";
 import type { ResolutionKey } from "@/domain/slideshow/value-objects/resolution";
+import { migrateLegacyBackgroundColor } from "@/domain/slideshow/value-objects/slide-background";
 import { nanoid } from "nanoid";
 
 export interface CreateSlideshowInput {
@@ -39,7 +40,7 @@ export class CreateSlideshowCommand {
       slideshowId: id,
       order: 0,
       durationFrames: 150,
-      backgroundColor: null,
+      background: migrateLegacyBackgroundColor(null),
       createdAt: now,
       updatedAt: now,
     };

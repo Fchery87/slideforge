@@ -28,16 +28,15 @@ import type {
   ShapeProperties,
   ImageProperties,
 } from "@/domain/slideshow/entities/canvas-object";
+import { resolveBackgroundToCss, createSolidBackground } from "@/domain/slideshow/value-objects/slide-background";
 
-const fontFamilies = [
-  "Inter",
-  "Poppins",
-  "Roboto",
-  "Open Sans",
-  "Montserrat",
-  "Playfair Display",
-  "Space Grotesk",
-];
+import { Resolutions } from "@/domain/slideshow/value-objects/resolution";
+
+import {
+  EDITOR_FONTS,
+  FONT_CATEGORIES,
+  type FontCategory,
+} from "@/presentation/components/editor/fonts/font-config";
 
 export function ObjectPropertiesPanel() {
   const {
@@ -103,13 +102,13 @@ export function ObjectPropertiesPanel() {
           <div className="flex items-center gap-1.5 mt-1">
             <input
               type="color"
-              value={currentSlide.backgroundColor || slideshow?.backgroundColor || "#1a1a2e"}
-              onChange={(e) => updateSlide(currentSlideIndex, { backgroundColor: e.target.value })}
+              value={resolveBackgroundToCss(currentSlide.background, slideshow?.backgroundColor ?? "#1a1a2e")}
+              onChange={(e) => updateSlide(currentSlideIndex, { background: createSolidBackground(e.target.value) })}
               className="h-7 w-8 cursor-pointer rounded border border-white/[0.08] bg-transparent"
             />
             <Input
-              value={currentSlide.backgroundColor || slideshow?.backgroundColor || "#1a1a2e"}
-              onChange={(e) => updateSlide(currentSlideIndex, { backgroundColor: e.target.value })}
+              value={resolveBackgroundToCss(currentSlide.background, slideshow?.backgroundColor ?? "#1a1a2e")}
+              onChange={(e) => updateSlide(currentSlideIndex, { background: createSolidBackground(e.target.value) })}
               className="h-7 bg-white/[0.04] text-xs"
             />
           </div>
@@ -175,8 +174,8 @@ export function ObjectPropertiesPanel() {
 
   const sendToBack = () => {
     if (!currentSlide) return;
-    const minZIndex = Math.min(...currentSlide.canvasObjects.map((o) => o.zIndex), 1);
-    update({ zIndex: Math.max(1, minZIndex - 1) });
+    const minZIndex = Math.min(...currentSlide.canvasObjects.map((o) => o.zIndex));
+    update({ zIndex: minZIndex > 0 ? minZIndex - 1 : 0 });
   };
 
   const bringForward = () => {
@@ -190,39 +189,35 @@ export function ObjectPropertiesPanel() {
   };
 
   const alignLeft = () => {
-    if (!currentSlide) return;
-    const minX = Math.min(...currentSlide.canvasObjects.map((o) => o.x));
-    update({ x: minX });
+    update({ x: 0 });
   };
 
   const alignCenter = () => {
     if (!currentSlide || !slideshow) return;
-    const slideWidth = slideshow.slides[0]?.canvasObjects[0]?.width || 960;
+    const { width: slideWidth } = Resolutions[slideshow.resolution];
     update({ x: (slideWidth - selectedObject.width) / 2 });
   };
 
   const alignRight = () => {
-    if (!currentSlide) return;
-    const maxX = Math.max(...currentSlide.canvasObjects.map((o) => o.x + o.width));
-    update({ x: maxX - selectedObject.width });
+    if (!slideshow) return;
+    const { width: slideWidth } = Resolutions[slideshow.resolution];
+    update({ x: slideWidth - selectedObject.width });
   };
 
   const alignTop = () => {
-    if (!currentSlide) return;
-    const minY = Math.min(...currentSlide.canvasObjects.map((o) => o.y));
-    update({ y: minY });
+    update({ y: 0 });
   };
 
   const alignMiddle = () => {
     if (!currentSlide || !slideshow) return;
-    const slideHeight = 540;
+    const { height: slideHeight } = Resolutions[slideshow.resolution];
     update({ y: (slideHeight - selectedObject.height) / 2 });
   };
 
   const alignBottom = () => {
-    if (!currentSlide) return;
-    const maxY = Math.max(...currentSlide.canvasObjects.map((o) => o.y + o.height));
-    update({ y: maxY - selectedObject.height });
+    if (!slideshow) return;
+    const { height: slideHeight } = Resolutions[slideshow.resolution];
+    update({ y: slideHeight - selectedObject.height });
   };
 
   return (
@@ -482,6 +477,7 @@ export function ObjectPropertiesPanel() {
       {selectedObject.type === "image" && (
         <ImagePropertiesEditor
           properties={selectedObject.properties as ImageProperties}
+          onUpdate={updateProperties}
         />
       )}
     </div>
@@ -512,12 +508,17 @@ function TextPropertiesEditor({
         <select
           value={properties.fontFamily}
           onChange={(e) => onUpdate({ fontFamily: e.target.value })}
-          className="mt-1 h-7 w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 text-xs text-slate-200 outline-none"
+          className="mt-1 h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 text-xs text-slate-200 outline-none"
+          style={{ fontFamily: properties.fontFamily }}
         >
-          {fontFamilies.map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
+          {FONT_CATEGORIES.map((cat) => (
+            <optgroup key={cat.value} label={cat.label}>
+              {EDITOR_FONTS.filter((f) => f.category === cat.value).map((f) => (
+                <option key={f.family} value={f.family} style={{ fontFamily: f.family }}>
+                  {f.family}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </div>
@@ -847,13 +848,38 @@ function ShapePropertiesEditor({
 
 function ImagePropertiesEditor({
   properties,
+  onUpdate,
 }: {
   properties: ImageProperties;
+  onUpdate: (props: Partial<ImageProperties>) => void;
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-slate-500">
-        Asset: <span className="text-slate-300">{properties.mediaAssetId.slice(0, 8)}...</span>
+      <div>
+        <Label className="text-[10px] uppercase tracking-wider text-slate-500">Asset ID</Label>
+        <p className="mt-1 text-xs text-slate-300 font-mono">
+          {properties.mediaAssetId.slice(0, 12)}...
+        </p>
+      </div>
+
+      {properties.objectFit && (
+        <div>
+          <Label className="text-[10px] uppercase tracking-wider text-slate-500">Fit Mode</Label>
+          <select
+            value={properties.objectFit || "cover"}
+            onChange={(e) => onUpdate({ objectFit: e.target.value as "cover" | "contain" | "fill" })}
+            className="mt-1 h-7 w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 text-xs text-slate-200 outline-none"
+          >
+            <option value="cover">Cover</option>
+            <option value="contain">Contain</option>
+            <option value="fill">Fill</option>
+          </select>
+        </div>
+      )}
+
+      <p className="text-[10px] text-slate-500">
+        Use the position and size controls above to transform this image.
+        Drag a new image from the sidebar to replace.
       </p>
     </div>
   );

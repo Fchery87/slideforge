@@ -7,6 +7,7 @@ import type { Slide } from "@/domain/slideshow/entities/slide";
 import type { CanvasObject } from "@/domain/slideshow/entities/canvas-object";
 import type { Transition } from "@/domain/slideshow/entities/transition";
 import type { AudioTrack } from "@/domain/slideshow/entities/audio-track";
+import { migrateLegacyBackgroundColor } from "@/domain/slideshow/value-objects/slide-background";
 
 function toSlideshow(row: typeof slideshows.$inferSelect, slideRows: (typeof slides.$inferSelect & { canvasObjects: (typeof canvasObjects.$inferSelect)[] })[], transitionRows: (typeof transitions.$inferSelect)[], audioTrackRows: (typeof audioTracks.$inferSelect)[]): Slideshow {
   return {
@@ -17,13 +18,16 @@ function toSlideshow(row: typeof slideshows.$inferSelect, slideRows: (typeof sli
     resolution: row.resolution,
     fps: row.fps,
     backgroundColor: row.backgroundColor,
+    theme: row.theme as Slideshow["theme"],
     thumbnailUrl: row.thumbnailUrl,
     slides: slideRows.map((s) => ({
       id: s.id,
       slideshowId: s.slideshowId,
       order: s.order,
       durationFrames: s.durationFrames,
-      backgroundColor: s.backgroundColor,
+      background: (s.background as Slide["background"]) ?? migrateLegacyBackgroundColor(s.backgroundColor),
+      layoutId: s.layoutId ?? undefined,
+      notes: s.notes ?? undefined,
       effects: s.effects as Slide["effects"],
       canvasObjects: s.canvasObjects.map((o) => ({
         id: o.id,
@@ -34,8 +38,9 @@ function toSlideshow(row: typeof slideshows.$inferSelect, slideRows: (typeof sli
         width: o.width,
         height: o.height,
         rotation: o.rotation,
-        opacity: o.opacity,
+        opacity: o.opacity / 100,
         zIndex: o.zIndex,
+        groupId: o.groupId ?? undefined,
         properties: o.properties as CanvasObject["properties"],
         createdAt: o.createdAt,
         updatedAt: o.updatedAt,
@@ -129,6 +134,7 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
       resolution: slideshow.resolution,
       fps: slideshow.fps,
       backgroundColor: slideshow.backgroundColor,
+      theme: slideshow.theme,
       thumbnailUrl: slideshow.thumbnailUrl,
       createdAt: slideshow.createdAt,
       updatedAt: slideshow.updatedAt,
@@ -136,7 +142,7 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
     return { ...slideshow, slides: [], transitions: [], audioTracks: [] };
   }
 
-  async update(id: string, data: Partial<Pick<Slideshow, "title" | "description" | "resolution" | "fps" | "backgroundColor" | "thumbnailUrl">>): Promise<Slideshow> {
+  async update(id: string, data: Partial<Pick<Slideshow, "title" | "description" | "resolution" | "fps" | "backgroundColor" | "theme" | "thumbnailUrl">>): Promise<Slideshow> {
     await db.update(slideshows).set({ ...data, updatedAt: new Date() }).where(eq(slideshows.id, id));
     const result = await this.findById(id);
     return result!;
@@ -152,17 +158,21 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
       slideshowId: slide.slideshowId,
       order: slide.order,
       durationFrames: slide.durationFrames,
-      backgroundColor: slide.backgroundColor,
+      background: slide.background,
+      notes: slide.notes,
+      layoutId: slide.layoutId,
       effects: slide.effects,
     });
     return { ...slide, canvasObjects: [] };
   }
 
-  async updateSlide(slideId: string, data: Partial<Pick<Slide, "durationFrames" | "backgroundColor" | "effects">>): Promise<Slide> {
+  async updateSlide(slideId: string, data: Partial<Pick<Slide, "durationFrames" | "background" | "effects" | "notes" | "layoutId">>): Promise<Slide> {
     await db.update(slides).set({
       ...(data.durationFrames !== undefined && { durationFrames: data.durationFrames }),
-      ...(data.backgroundColor !== undefined && { backgroundColor: data.backgroundColor }),
+      ...(data.background !== undefined && { background: data.background }),
       ...(data.effects !== undefined && { effects: data.effects }),
+      ...(data.notes !== undefined && { notes: data.notes }),
+      ...(data.layoutId !== undefined && { layoutId: data.layoutId }),
       updatedAt: new Date(),
     }).where(eq(slides.id, slideId));
 
@@ -183,7 +193,9 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
       slideshowId: slide.slideshowId,
       order: slide.order,
       durationFrames: slide.durationFrames,
-      backgroundColor: slide.backgroundColor,
+      background: (slide.background as Slide["background"]) ?? migrateLegacyBackgroundColor(slide.backgroundColor),
+      layoutId: slide.layoutId ?? undefined,
+      notes: slide.notes ?? undefined,
       effects: slide.effects as Slide["effects"],
       canvasObjects: slide.canvasObjects.map((o) => ({
         id: o.id,
@@ -194,8 +206,9 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
         width: o.width,
         height: o.height,
         rotation: o.rotation,
-        opacity: o.opacity,
+        opacity: o.opacity / 100,
         zIndex: o.zIndex,
+        groupId: o.groupId ?? undefined,
         properties: o.properties as CanvasObject["properties"],
         createdAt: o.createdAt,
         updatedAt: o.updatedAt,
@@ -228,8 +241,9 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
           width: obj.width,
           height: obj.height,
           rotation: obj.rotation,
-          opacity: obj.opacity,
+          opacity: Math.round(obj.opacity * 100),
           zIndex: obj.zIndex,
+          groupId: obj.groupId ?? null,
           properties: obj.properties,
         })
         .onConflictDoUpdate({
@@ -240,8 +254,9 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
             width: obj.width,
             height: obj.height,
             rotation: obj.rotation,
-            opacity: obj.opacity,
+            opacity: Math.round(obj.opacity * 100),
             zIndex: obj.zIndex,
+            groupId: obj.groupId ?? null,
             properties: obj.properties,
             updatedAt: new Date(),
           },
@@ -293,5 +308,33 @@ export class DrizzleSlideshowRepository implements ISlideshowRepository {
 
   async removeAudioTrack(trackId: string): Promise<void> {
     await db.delete(audioTracks).where(eq(audioTracks.id, trackId));
+  }
+
+  async updateAudioTrack(
+    trackId: string,
+    data: Partial<Pick<AudioTrack, "startFrame" | "endFrame" | "volume" | "fadeInFrames" | "fadeOutFrames">>
+  ): Promise<AudioTrack> {
+    await db
+      .update(audioTracks)
+      .set(data)
+      .where(eq(audioTracks.id, trackId));
+
+    const [row] = await db
+      .select()
+      .from(audioTracks)
+      .where(eq(audioTracks.id, trackId));
+
+    return {
+      id: row.id,
+      slideshowId: row.slideshowId,
+      mediaAssetId: row.mediaAssetId,
+      trackIndex: row.trackIndex,
+      startFrame: row.startFrame,
+      endFrame: row.endFrame,
+      volume: row.volume,
+      fadeInFrames: row.fadeInFrames,
+      fadeOutFrames: row.fadeOutFrames,
+      createdAt: row.createdAt,
+    };
   }
 }

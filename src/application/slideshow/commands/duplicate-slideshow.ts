@@ -1,5 +1,6 @@
 import type { ISlideshowRepository } from "@/domain/slideshow/repositories/slideshow-repository.interface";
 import type { Slideshow } from "@/domain/slideshow/entities/slideshow";
+import { migrateLegacyBackgroundColor } from "@/domain/slideshow/value-objects/slide-background";
 import { nanoid } from "nanoid";
 
 export class DuplicateSlideshowCommand {
@@ -20,6 +21,7 @@ export class DuplicateSlideshowCommand {
       resolution: original.resolution,
       fps: original.fps,
       backgroundColor: original.backgroundColor,
+      theme: original.theme,
       thumbnailUrl: original.thumbnailUrl,
       createdAt: now,
       updatedAt: now,
@@ -32,7 +34,9 @@ export class DuplicateSlideshowCommand {
         slideshowId: newId,
         order: slide.order,
         durationFrames: slide.durationFrames,
-        backgroundColor: slide.backgroundColor,
+        background: slide.background ?? migrateLegacyBackgroundColor(null),
+        notes: slide.notes,
+        layoutId: slide.layoutId,
         createdAt: now,
         updatedAt: now,
       });

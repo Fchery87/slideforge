@@ -3,6 +3,16 @@ import type { Slide } from "./slide";
 import type { Transition } from "./transition";
 import type { AudioTrack } from "./audio-track";
 
+export interface SlideshowTheme {
+  name: string;
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  headlineFont: string;
+  bodyFont: string;
+  textColor: string;
+}
+
 export interface Slideshow {
   id: string;
   userId: string;
@@ -11,6 +21,7 @@ export interface Slideshow {
   resolution: ResolutionKey;
   fps: number;
   backgroundColor: string;
+  theme?: SlideshowTheme;
   thumbnailUrl: string | null;
   slides: Slide[];
   transitions: Transition[];

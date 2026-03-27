@@ -23,11 +23,23 @@ import {
   Save,
   Check,
   Maximize2,
+  Monitor,
 } from "lucide-react";
 
 export function EditorTopBar() {
-  const { slideshow, isEditMode, isDirty, markClean, toggleEditMode, undo, redo, canUndo, canRedo } =
-    useEditorStore();
+  const {
+    slideshow,
+    isEditMode,
+    isDirty,
+    markClean,
+    toggleEditMode,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    setPreviewMode,
+    setPresenterMode,
+  } = useEditorStore();
 
   const [title, setTitle] = useState(slideshow?.title ?? "");
   const [saving, setSaving] = useState(false);
@@ -209,8 +221,7 @@ export function EditorTopBar() {
               variant="ghost"
               size="sm"
               onClick={() => {
-                const event = new CustomEvent("open-preview-modal");
-                window.dispatchEvent(event);
+                setPreviewMode(true);
               }}
               className="text-slate-400 hover:text-slate-200"
             >
@@ -219,6 +230,24 @@ export function EditorTopBar() {
             </Button>
           </TooltipTrigger>
           <TooltipContent>Fullscreen Preview (F11)</TooltipContent>
+        </Tooltip>
+
+        {/* Present */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setPresenterMode(true);
+              }}
+              className="text-slate-400 hover:text-slate-200"
+            >
+              <Monitor className="mr-1 h-3.5 w-3.5" />
+              Present
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Presenter View</TooltipContent>
         </Tooltip>
 
         <Separator orientation="vertical" className="mx-1 h-5 bg-white/[0.08]" />

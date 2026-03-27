@@ -1,4 +1,5 @@
-import { integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import type { SlideshowTheme } from "@/domain/slideshow/entities/slideshow";
 
 export const resolutionEnum = pgEnum("resolution", ["720p", "1080p"]);
 
@@ -10,6 +11,7 @@ export const slideshows = pgTable("slideshows", {
   resolution: resolutionEnum("resolution").notNull().default("1080p"),
   fps: integer("fps").notNull().default(30),
   backgroundColor: text("background_color").notNull().default("#000000"),
+  theme: jsonb("theme").$type<SlideshowTheme>(),
   thumbnailUrl: text("thumbnail_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
